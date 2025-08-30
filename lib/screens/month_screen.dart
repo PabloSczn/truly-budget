@@ -10,6 +10,7 @@ import 'year_overview_screen.dart';
 import 'add_income_screen.dart';
 import 'allocate_income_screen.dart';
 import 'category_detail_screen.dart';
+import '../widgets/app_menu_drawer.dart';
 
 class MonthScreen extends StatelessWidget {
   const MonthScreen({super.key});
@@ -27,6 +28,7 @@ class MonthScreen extends StatelessWidget {
             Format.money(b.totalIncome, symbol: store.currency.symbol)),
         actions: const [CurrencySelectorAction()],
       ),
+      drawer: const AppMenuDrawer(),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
