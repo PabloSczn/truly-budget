@@ -18,7 +18,7 @@ class AboutScreen extends StatelessWidget {
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
-          Text('Version: $_appVersion'),
+          const Text('Version: $_appVersion'),
           const SizedBox(height: 24),
           const Text('Contact'),
           ListTile(

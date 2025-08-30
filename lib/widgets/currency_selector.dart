@@ -33,17 +33,23 @@ class _CurrencySheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final store = context.watch<BudgetStore>();
     return SafeArea(
-      child: ListView(
-        children: [
-          const ListTile(title: Text('Choose currency')),
-          for (final c in Currencies.list)
-            RadioListTile<String>(
-              value: c.code,
-              groupValue: store.currency.code,
-              title: Text('${c.symbol}  ${c.code}'),
-              onChanged: (_) => Navigator.of(context).pop(c),
-            )
-        ],
+      child: RadioGroup<String>(
+        groupValue: store.currency.code,
+        onChanged: (code) {
+          if (code == null) return;
+          // Return the selected Currency to the bottom sheet caller.
+          Navigator.of(context).pop(Currencies.byCode(code));
+        },
+        child: ListView(
+          children: [
+            const ListTile(title: Text('Choose currency')),
+            for (final c in Currencies.list)
+              RadioListTile<String>(
+                value: c.code,
+                title: Text('${c.symbol}  ${c.code}'),
+              ),
+          ],
+        ),
       ),
     );
   }

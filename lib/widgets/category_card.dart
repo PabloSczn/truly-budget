@@ -20,9 +20,8 @@ class CategoryCard extends StatelessWidget {
     final double remaining = category.remaining;
 
     // clamp() -> num, so call .toDouble()
-    final double ratio = allocated > 0
-        ? (spent / allocated).clamp(0.0, 1.0).toDouble()
-        : 0.0;
+    final double ratio =
+        allocated > 0 ? (spent / allocated).clamp(0.0, 1.0).toDouble() : 0.0;
 
     final Color barColor = ratio <= 0.5
         ? Colors.green
@@ -60,18 +59,16 @@ class CategoryCard extends StatelessWidget {
                   value: ratio,
                   minHeight: 8,
                   color: barColor,
-                  backgroundColor: barColor.withOpacity(0.15),
+                  backgroundColor: barColor.withValues(alpha: 0.15),
                 ),
               ),
               const SizedBox(height: 6),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Spent: ' +
-                      Format.money(spent, symbol: currencySymbol)),
-                  Text('Left: ' +
-                      Format.money(remaining.clamp(0, double.infinity),
-                          symbol: currencySymbol)),
+                  Text('Spent: ${Format.money(spent, symbol: currencySymbol)}'),
+                  Text(
+                      'Left: ${Format.money(remaining.clamp(0, double.infinity), symbol: currencySymbol)}'),
                 ],
               )
             ],

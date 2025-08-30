@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../state/budget_store.dart';
+import 'allocate_income_screen.dart';
 
 class AddIncomeScreen extends StatefulWidget {
   const AddIncomeScreen({super.key});
@@ -67,7 +68,8 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
                     // After income, go straight to Allocate screen
                     Navigator.of(context).pushReplacement(
                       MaterialPageRoute(
-                          builder: (_) => const _GoAllocateAfterIncome()),
+                        builder: (_) => const AllocateIncomeScreen(),
+                      ),
                     );
                   }
                 },
@@ -78,21 +80,6 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _GoAllocateAfterIncome extends StatelessWidget {
-  const _GoAllocateAfterIncome();
-
-  @override
-  Widget build(BuildContext context) {
-    // redirect into AllocateIncomeScreen so user can allocate immediately
-    Future.microtask(() {
-      Navigator.of(context).pushReplacementNamed('/allocate');
-    });
-    return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
     );
   }
 }

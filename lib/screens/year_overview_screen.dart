@@ -42,8 +42,11 @@ class _YearOverviewScreenState extends State<YearOverviewScreen> {
                 const SizedBox(width: 8),
                 DropdownButton<int>(
                   value: year,
-                  items: [for (int y = DateTime.now().year - 3; y <= DateTime.now().year + 3; y++)
-                    DropdownMenuItem(value: y, child: Text(y.toString()))
+                  items: [
+                    for (int y = DateTime.now().year - 3;
+                        y <= DateTime.now().year + 3;
+                        y++)
+                      DropdownMenuItem(value: y, child: Text(y.toString()))
                   ],
                   onChanged: (v) => setState(() => year = v ?? year),
                 ),
@@ -68,7 +71,20 @@ class _YearOverviewScreenState extends State<YearOverviewScreen> {
                           sideTitles: SideTitles(
                             showTitles: true,
                             getTitlesWidget: (value, meta) {
-                              const names = ['J','F','M','A','M','J','J','A','S','O','N','D'];
+                              const names = [
+                                'J',
+                                'F',
+                                'M',
+                                'A',
+                                'M',
+                                'J',
+                                'J',
+                                'A',
+                                'S',
+                                'O',
+                                'N',
+                                'D'
+                              ];
                               return Padding(
                                 padding: const EdgeInsets.only(top: 4.0),
                                 child: Text(names[value.toInt() - 1]),
@@ -97,7 +113,8 @@ class _YearOverviewScreenState extends State<YearOverviewScreen> {
               ],
             ),
             const SizedBox(height: 8),
-            const Text('Graph shows total income and total expenses for each month.'),
+            const Text(
+                'Graph shows total income and total expenses for each month.'),
           ],
         ),
       ),
@@ -110,6 +127,10 @@ class _LegendDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(width: 12, height: 12, decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.blue));
+    return Container(
+        width: 12,
+        height: 12,
+        decoration:
+            const BoxDecoration(shape: BoxShape.circle, color: Colors.blue));
   }
 }
