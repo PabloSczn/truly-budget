@@ -15,7 +15,7 @@ Future<void> main() async {
   // Apply fixable lints
   await run('dart', ['fix', '--apply']);
 
-  // Analyze: fail only on **errors**
+  // Analyse
   final analyze = await run('dart', ['analyze']);
   if (analyze != 0) {
     stderr.writeln('dart analyze reported errors.');

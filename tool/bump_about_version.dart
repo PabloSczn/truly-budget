@@ -25,7 +25,7 @@ void main() {
 
   var code = aboutFile.readAsStringSync();
 
-  // Replace only the string literal, preserve comments/spacing.
+  // Replace only the string literal, preserve comments/spacing
   final re = RegExp(r"(static\s+const\s+_appVersion\s*=\s*')([^']*)(')");
   if (!re.hasMatch(code)) {
     stderr.writeln('Could not find static const _appVersion in $aboutPath');
@@ -38,7 +38,7 @@ void main() {
   if (newCode != code) {
     aboutFile.writeAsStringSync(newCode);
     stdout.writeln('Updated _appVersion to $version in $aboutPath');
-    // Exit 2 so pre-commit knows files changed and asks you to re-commit.
+    // Exit 2 so pre-commit knows files changed and asks to re-commit
     exit(2);
   } else {
     stdout.writeln('About screen already up to date ($version).');
