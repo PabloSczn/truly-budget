@@ -126,6 +126,7 @@ class BudgetStore extends ChangeNotifier {
   }
 
   // simple random id
-  String _rid() => DateTime.now().millisecondsSinceEpoch.toString() +
+  String _rid() =>
+      DateTime.now().millisecondsSinceEpoch.toString() +
       (1000 + Random().nextInt(8999)).toString();
 }

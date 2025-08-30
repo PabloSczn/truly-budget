@@ -59,7 +59,8 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
           onPressed: () {
             if (_formKey.currentState!.validate()) {
               Navigator.pop(context, (
-                nameCtrl.text.trim(), emojiCtrl.text.trim(),
+                nameCtrl.text.trim(),
+                emojiCtrl.text.trim(),
               ));
             }
           },

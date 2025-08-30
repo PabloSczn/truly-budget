@@ -24,8 +24,8 @@ class MonthScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('$ymLabel — Income: ' +
-            Format.money(b.totalIncome, symbol: store.currency.symbol)),
+        title: Text(
+            '$ymLabel — Income: ${Format.money(b.totalIncome, symbol: store.currency.symbol)}'),
         actions: const [CurrencySelectorAction()],
       ),
       drawer: const AppMenuDrawer(),
@@ -88,9 +88,7 @@ class MonthScreen extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.all(12.0),
                 child: Text(
-                  'You have ' +
-                      Format.money(spare, symbol: store.currency.symbol) +
-                      ' spare! You can use this as your savings.\nTip: Create a category for savings and take your savings as expenses so you save every month.',
+                  'You have ${Format.money(spare, symbol: store.currency.symbol)} spare! You can use this as your savings.\nTip: Create a category for savings and take your savings as expenses so you save every month.',
                 ),
               ),
             ),

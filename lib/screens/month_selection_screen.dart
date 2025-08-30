@@ -16,8 +16,19 @@ class _MonthSelectionScreenState extends State<MonthSelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final months = const [
-      'January','February','March','April','May','June','July','August','September','October','November','December'
+    const months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December'
     ];
     return Scaffold(
       appBar: AppBar(title: const Text('Select Month')),
@@ -32,8 +43,11 @@ class _MonthSelectionScreenState extends State<MonthSelectionScreen> {
                 const SizedBox(width: 8),
                 DropdownButton<int>(
                   value: year,
-                  items: [for (int y = DateTime.now().year - 3; y <= DateTime.now().year + 3; y++)
-                    DropdownMenuItem(value: y, child: Text(y.toString()))
+                  items: [
+                    for (int y = DateTime.now().year - 3;
+                        y <= DateTime.now().year + 3;
+                        y++)
+                      DropdownMenuItem(value: y, child: Text(y.toString()))
                   ],
                   onChanged: (v) => setState(() => year = v ?? year),
                 ),

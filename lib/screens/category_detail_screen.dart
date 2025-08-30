@@ -65,22 +65,22 @@ class CategoryDetailScreen extends StatelessWidget {
                 value: ratio,
                 minHeight: 14,
                 color: statusColor,
-                backgroundColor: statusColor.withOpacity(0.15),
+                backgroundColor: statusColor.withValues(alpha: 0.15),
               ),
             ),
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Allocated: ' +
-                    Format.money(allocated, symbol: store.currency.symbol)),
-                Text('Spent: ' +
-                    Format.money(spent, symbol: store.currency.symbol)),
+                Text(
+                    'Allocated: ${Format.money(allocated, symbol: store.currency.symbol)}'),
+                Text(
+                    'Spent: ${Format.money(spent, symbol: store.currency.symbol)}'),
               ],
             ),
             const SizedBox(height: 12),
             Card(
-              color: statusColor.withOpacity(0.1),
+              color: statusColor.withValues(alpha: 0.1),
               child: Padding(
                 padding: const EdgeInsets.all(12.0),
                 child: Text(statusText,
@@ -105,8 +105,8 @@ class CategoryDetailScreen extends StatelessWidget {
                   final e = cat.expenses[i];
                   return ListTile(
                     title: Text(e.note),
-                    trailing: Text(Format.money(e.amount,
-                        symbol: store.currency.symbol)),
+                    trailing: Text(
+                        Format.money(e.amount, symbol: store.currency.symbol)),
                   );
                 },
               ),
@@ -158,7 +158,8 @@ class _AddExpenseDialogState extends State<_AddExpenseDialog> {
             TextFormField(
               controller: amountCtrl,
               decoration: const InputDecoration(labelText: 'Amount'),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
               validator: (v) {
                 final d = double.tryParse(v?.replaceAll(',', '.') ?? '');
                 if (d == null || d <= 0) return 'Enter a valid amount';

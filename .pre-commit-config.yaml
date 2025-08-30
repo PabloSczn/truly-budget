@@ -1,0 +1,14 @@
+repos:
+  - repo: local
+    hooks:
+      - id: sync-about-version
+        name: Sync About version from pubspec.yaml
+        language: system
+        entry: dart tool/bump_about_version.dart
+        pass_filenames: false
+
+      - id: dart-format-fix-analyze
+        name: Format, fix and analyze Dart/Flutter
+        language: system
+        entry: dart tool/lint_and_fix.dart
+        pass_filenames: false

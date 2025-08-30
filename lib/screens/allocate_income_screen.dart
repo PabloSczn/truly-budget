@@ -16,7 +16,9 @@ class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
 
   @override
   void dispose() {
-    for (final c in ctrls.values) c.dispose();
+    for (final c in ctrls.values) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -34,9 +36,7 @@ class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Allocate your remaining income to categories. You can enter allocations as ' +
-                  (usePercent ? 'percentages (%)' : 'actual amounts') +
-                  '.',
+              'Allocate your remaining income to categories. You can enter allocations as ${usePercent ? 'percentages (%)' : 'actual amounts'}.',
             ),
             const SizedBox(height: 8),
             Row(
@@ -47,8 +47,8 @@ class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
                   onChanged: (v) => setState(() => usePercent = v),
                 ),
                 const Spacer(),
-                Text('Available: ' + available.toStringAsFixed(2) +
-                    ' ' + store.currency.code),
+                Text(
+                    'Available: ${available.toStringAsFixed(2)} ${store.currency.code}'),
               ],
             ),
             const Divider(),
@@ -58,17 +58,16 @@ class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
                   for (final c in b.categories)
                     ListTile(
                       title: Text('${c.emoji}  ${c.name}'),
-                      subtitle: Text('Currently allocated: ' +
-                          c.allocated.toStringAsFixed(2) +
-                          ' ${store.currency.code}'),
+                      subtitle: Text(
+                          'Currently allocated: ${c.allocated.toStringAsFixed(2)} ${store.currency.code}'),
                       trailing: SizedBox(
                         width: 120,
                         child: TextField(
                           controller: ctrls.putIfAbsent(
                               c.id, () => TextEditingController()),
                           textAlign: TextAlign.end,
-                          keyboardType:
-                              const TextInputType.numberWithOptions(decimal: true),
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true),
                           decoration: InputDecoration(
                             labelText: usePercent ? '%' : store.currency.code,
                           ),
@@ -103,14 +102,18 @@ class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
                         if (usePercent) {
                           final map = <String, double>{};
                           ctrls.forEach((id, c) {
-                            final v = double.tryParse(c.text.replaceAll(',', '.')) ?? 0.0;
+                            final v =
+                                double.tryParse(c.text.replaceAll(',', '.')) ??
+                                    0.0;
                             if (v > 0) map[id] = v;
                           });
                           store.allocateByPercents(map);
                         } else {
                           final map = <String, double>{};
                           ctrls.forEach((id, c) {
-                            final v = double.tryParse(c.text.replaceAll(',', '.')) ?? 0.0;
+                            final v =
+                                double.tryParse(c.text.replaceAll(',', '.')) ??
+                                    0.0;
                             if (v > 0) map[id] = v;
                           });
                           store.allocateByAmounts(map);
