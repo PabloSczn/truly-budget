@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:truly_budget/widgets/emoji_selector.dart';
 import '../state/budget_store.dart';
 import '../utils/format.dart';
 
@@ -149,7 +150,27 @@ class _AddExpenseDialogState extends State<_AddExpenseDialog> {
           children: [
             TextFormField(
               controller: noteCtrl,
-              decoration: const InputDecoration(labelText: 'What for?'),
+              decoration: InputDecoration(
+                labelText: 'What for?',
+                suffixIcon: IconButton(
+                  tooltip: 'Insert emoji',
+                  icon: const Icon(Icons.emoji_emotions_outlined),
+                  onPressed: () async {
+                    final e = await pickEmoji(context);
+                    if (e != null && e.isNotEmpty) {
+                      final t = noteCtrl;
+                      final sel = t.selection;
+                      final start = sel.start < 0 ? t.text.length : sel.start;
+                      final end = sel.end < 0 ? t.text.length : sel.end;
+                      t.value = TextEditingValue(
+                        text: t.text.replaceRange(start, end, e),
+                        selection:
+                            TextSelection.collapsed(offset: start + e.length),
+                      );
+                    }
+                  },
+                ),
+              ),
               validator: (v) => (v == null || v.trim().isEmpty)
                   ? 'Please enter a note'
                   : null,

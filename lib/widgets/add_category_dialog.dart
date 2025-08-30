@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:truly_budget/widgets/emoji_selector.dart';
 
 class AddCategoryDialog extends StatefulWidget {
   const AddCategoryDialog({super.key});
@@ -9,13 +10,12 @@ class AddCategoryDialog extends StatefulWidget {
 
 class _AddCategoryDialogState extends State<AddCategoryDialog> {
   final nameCtrl = TextEditingController();
-  final emojiCtrl = TextEditingController(text: '📦');
+  String selectedEmoji = '🗂️';
   final _formKey = GlobalKey<FormState>();
 
   @override
   void dispose() {
     nameCtrl.dispose();
-    emojiCtrl.dispose();
     super.dispose();
   }
 
@@ -39,13 +39,23 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
                   : null,
             ),
             const SizedBox(height: 12),
-            TextFormField(
-              controller: emojiCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Emoji',
-                hintText: 'e.g. 🍔, 🏠, 🚗',
-              ),
-              maxLength: 2,
+            Row(
+              children: [
+                Text('Emoji:', style: Theme.of(context).textTheme.bodyMedium),
+                const SizedBox(width: 8),
+                Text(selectedEmoji, style: const TextStyle(fontSize: 24)),
+                const Spacer(),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.emoji_emotions_outlined),
+                  label: const Text('Choose'),
+                  onPressed: () async {
+                    final e = await pickEmoji(context);
+                    if (e != null && e.isNotEmpty) {
+                      setState(() => selectedEmoji = e);
+                    }
+                  },
+                ),
+              ],
             ),
           ],
         ),
@@ -58,10 +68,7 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
         FilledButton(
           onPressed: () {
             if (_formKey.currentState!.validate()) {
-              Navigator.pop(context, (
-                nameCtrl.text.trim(),
-                emojiCtrl.text.trim(),
-              ));
+              Navigator.pop(context, (nameCtrl.text.trim(), selectedEmoji));
             }
           },
           child: const Text('Add'),
