@@ -19,43 +19,50 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
     super.dispose();
   }
 
+  Future<void> _pickEmoji() async {
+    final e = await pickEmoji(context);
+    if (e != null && e.isNotEmpty) {
+      setState(() => selectedEmoji = e);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('Add Category'),
       content: Form(
         key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextFormField(
-              controller: nameCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Category name',
-                prefixIcon: Icon(Icons.label_outline),
-              ),
-              validator: (v) => (v == null || v.trim().isEmpty)
-                  ? 'Please enter a name'
-                  : null,
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Text('Emoji:', style: Theme.of(context).textTheme.bodyMedium),
-                const SizedBox(width: 8),
-                Text(selectedEmoji, style: const TextStyle(fontSize: 24)),
-                const Spacer(),
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.emoji_emotions_outlined),
-                  label: const Text('Choose'),
-                  onPressed: () async {
-                    final e = await pickEmoji(context);
-                    if (e != null && e.isNotEmpty) {
-                      setState(() => selectedEmoji = e);
-                    }
-                  },
+            // Leading emoji acts as the selector button
+            InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: _pickEmoji,
+              child: Container(
+                width: 56,
+                height: 56,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-              ],
+                child:
+                    Text(selectedEmoji, style: const TextStyle(fontSize: 28)),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextFormField(
+                controller: nameCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Category name',
+                  hintText: 'e.g. Groceries',
+                ),
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Please enter a name'
+                    : null,
+              ),
             ),
           ],
         ),
