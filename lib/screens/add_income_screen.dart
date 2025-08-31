@@ -26,7 +26,17 @@ class _EmojiPrefixButton extends StatelessWidget {
         splashRadius: 20,
         onPressed: onTap,
         tooltip: 'Choose emoji',
-        icon: Text(emoji, style: const TextStyle(fontSize: 22)),
+        // Nudge the emoji slightly down to align with the text baseline
+        icon: Transform.translate(
+          offset: const Offset(1, 6),
+          child: Text(
+            emoji,
+            style: const TextStyle(
+              fontSize: 22,
+              height: 1.0,
+            ),
+          ),
+        ),
       ),
     );
   }

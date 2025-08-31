@@ -19,7 +19,17 @@ class _EmojiPrefixButton extends StatelessWidget {
         splashRadius: 20,
         onPressed: onTap,
         tooltip: 'Choose emoji',
-        icon: Text(emoji, style: const TextStyle(fontSize: 22)),
+        // Nudge the emoji slightly down to align with the text baseline
+        icon: Transform.translate(
+          offset: const Offset(1, 7),
+          child: Text(
+            emoji,
+            style: const TextStyle(
+              fontSize: 22,
+              height: 1.0,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -165,15 +175,6 @@ class _AddExpenseDialogState extends State<_AddExpenseDialog> {
     final e = await pickEmoji(context);
     if (e == null || e.isEmpty) return;
     setState(() => leadingEmoji = e);
-
-    final t = noteCtrl;
-    final sel = t.selection;
-    final start = sel.start < 0 ? t.text.length : sel.start;
-    final end = sel.end < 0 ? t.text.length : sel.end;
-    t.value = TextEditingValue(
-      text: t.text.replaceRange(start, end, e),
-      selection: TextSelection.collapsed(offset: start + e.length),
-    );
   }
 
   @override
