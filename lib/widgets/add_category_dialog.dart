@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:truly_budget/widgets/emoji_selector.dart';
 
 class AddCategoryDialog extends StatefulWidget {
   const AddCategoryDialog({super.key});
@@ -9,14 +10,20 @@ class AddCategoryDialog extends StatefulWidget {
 
 class _AddCategoryDialogState extends State<AddCategoryDialog> {
   final nameCtrl = TextEditingController();
-  final emojiCtrl = TextEditingController(text: '📦');
+  String selectedEmoji = '🗂️';
   final _formKey = GlobalKey<FormState>();
 
   @override
   void dispose() {
     nameCtrl.dispose();
-    emojiCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickEmoji() async {
+    final e = await pickEmoji(context);
+    if (e != null && e.isNotEmpty) {
+      setState(() => selectedEmoji = e);
+    }
   }
 
   @override
@@ -25,27 +32,37 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
       title: const Text('Add Category'),
       content: Form(
         key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextFormField(
-              controller: nameCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Category name',
-                prefixIcon: Icon(Icons.label_outline),
+            // Leading emoji acts as the selector button
+            InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: _pickEmoji,
+              child: Container(
+                width: 56,
+                height: 56,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child:
+                    Text(selectedEmoji, style: const TextStyle(fontSize: 28)),
               ),
-              validator: (v) => (v == null || v.trim().isEmpty)
-                  ? 'Please enter a name'
-                  : null,
             ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: emojiCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Emoji',
-                hintText: 'e.g. 🍔, 🏠, 🚗',
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextFormField(
+                controller: nameCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Category name',
+                  hintText: 'e.g. Groceries',
+                ),
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Please enter a name'
+                    : null,
               ),
-              maxLength: 2,
             ),
           ],
         ),
@@ -58,10 +75,7 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
         FilledButton(
           onPressed: () {
             if (_formKey.currentState!.validate()) {
-              Navigator.pop(context, (
-                nameCtrl.text.trim(),
-                emojiCtrl.text.trim(),
-              ));
+              Navigator.pop(context, (nameCtrl.text.trim(), selectedEmoji));
             }
           },
           child: const Text('Add'),

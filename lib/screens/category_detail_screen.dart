@@ -1,7 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:truly_budget/widgets/emoji_selector.dart';
 import '../state/budget_store.dart';
 import '../utils/format.dart';
+
+class _EmojiPrefixButton extends StatelessWidget {
+  final String emoji;
+  final VoidCallback onTap;
+  const _EmojiPrefixButton({required this.emoji, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 44,
+      height: 44,
+      child: IconButton(
+        padding: EdgeInsets.zero,
+        splashRadius: 20,
+        onPressed: onTap,
+        tooltip: 'Choose emoji',
+        // Nudge the emoji slightly down to align with the text baseline
+        icon: Transform.translate(
+          offset: const Offset(1, 7),
+          child: Text(
+            emoji,
+            style: const TextStyle(
+              fontSize: 22,
+              height: 1.0,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class CategoryDetailScreen extends StatelessWidget {
   final String categoryId;
@@ -127,15 +159,22 @@ class _AddExpenseDialog extends StatefulWidget {
 }
 
 class _AddExpenseDialogState extends State<_AddExpenseDialog> {
-  final noteCtrl = TextEditingController(text: '🧾 Expense');
+  final noteCtrl = TextEditingController(text: 'Expense');
   final amountCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  String leadingEmoji = '🧾';
 
   @override
   void dispose() {
     noteCtrl.dispose();
     amountCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _insertEmojiFromPicker() async {
+    final e = await pickEmoji(context);
+    if (e == null || e.isEmpty) return;
+    setState(() => leadingEmoji = e);
   }
 
   @override
@@ -149,7 +188,18 @@ class _AddExpenseDialogState extends State<_AddExpenseDialog> {
           children: [
             TextFormField(
               controller: noteCtrl,
-              decoration: const InputDecoration(labelText: 'What for?'),
+              decoration: InputDecoration(
+                labelText: 'What for?',
+                prefixIcon: _EmojiPrefixButton(
+                  emoji: leadingEmoji,
+                  onTap: _insertEmojiFromPicker,
+                ),
+                prefixIconConstraints: const BoxConstraints(
+                  minWidth: 44,
+                  minHeight: 44,
+                  maxWidth: 52,
+                ),
+              ),
               validator: (v) => (v == null || v.trim().isEmpty)
                   ? 'Please enter a note'
                   : null,
