@@ -14,7 +14,7 @@ class BudgetStore extends ChangeNotifier {
   bool initialized = false;
 
   MonthBudget? get currentBudget =>
-      selectedYMKey == null ? null : _budgets[selectedYMKey]!;
+      selectedYMKey == null ? null : _budgets[selectedYMKey];
 
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
