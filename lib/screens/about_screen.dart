@@ -4,7 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
 
-  static const _appVersion = '1.0.0+1'; // in sync with pubspec
+  static const _appVersion = '1.0.1'; // in sync with pubspec
 
   @override
   Widget build(BuildContext context) {
