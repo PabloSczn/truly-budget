@@ -16,9 +16,9 @@ Future<void> main() async {
   await run('dart', ['fix', '--apply']);
 
   // Analyse
-  final analyze = await run('dart', ['analyze']);
-  if (analyze != 0) {
-    stderr.writeln('dart analyze reported errors.');
-    exit(analyze);
+  final analyse = await run('dart', ['analyze']);
+  if (analyse != 0) {
+    stderr.writeln('dart analyse reported errors.');
+    exit(analyse);
   }
 }
