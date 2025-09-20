@@ -3,6 +3,7 @@ name: Build on main
 on:
   push:
     branches: [ main ]
+  workflow_dispatch: {}
 
 jobs:
   build:
@@ -24,14 +25,28 @@ jobs:
         run: flutter pub get
 
       # Android
-      - name: Build Android AppBundle
+      - name: Build Android AppBundle 🛠️
         run: |
           flutter build appbundle \
             --build-name "${{ steps.ver.outputs.semver }}" \
             --build-number "${{ github.run_number }}"
 
-      - name: Upload Android AppBundle
+      - name: Upload Android AppBundle ⬆️
         uses: actions/upload-artifact@v4
         with:
-          name: trulybudget-android-${{ steps.ver.outputs.semver }}+${{ github.run_number }}
+          name: trulybudget-aab-${{ steps.ver.outputs.semver }}+${{ github.run_number }}
           path: build/app/outputs/bundle/release/app-release.aab
+
+      # APK
+      - name: Build Android debug APK 🛠️
+        run: |
+          flutter build apk \
+            --debug \
+            --build-name "${{ steps.ver.outputs.semver }}" \
+            --build-number "${{ github.run_number }}"
+
+      - name: Upload debug APK ⬆️
+        uses: actions/upload-artifact@v4
+        with:
+          name: trulybudget-apk-debug-${{ steps.ver.outputs.semver }}+${{ github.run_number }}
+          path: build/app/outputs/flutter-apk/app-debug.apk
