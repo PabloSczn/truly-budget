@@ -23,9 +23,15 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
-      # Android example
+      # Android
       - name: Build Android AppBundle
         run: |
           flutter build appbundle \
             --build-name "${{ steps.ver.outputs.semver }}" \
             --build-number "${{ github.run_number }}"
+
+      - name: Upload Android AppBundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: trulybudget-android-${{ steps.ver.outputs.semver }}+${{ github.run_number }}
+          path: build/app/outputs/bundle/release/app-release.aab
