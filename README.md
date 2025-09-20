@@ -1,16 +1,42 @@
-# trulybudget
+# TrulyBudget - 🚧 In progress 🚧
 
-A new Flutter project.
+A clean Flutter budgeting app
 
-## Getting Started
+## Current features
 
-This project is a starting point for a Flutter application.
+* New month → add income → allocate (amount or %) → track expenses
+* Emoji categories & quick emoji picker
+* Month summary (income vs expenses, overspend alerts, spare)
+* Currency switcher (GBP/EUR/USD/JPY/INR)
 
-A few resources to get you started if this is your first Flutter project:
+## Quick start
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+```bash
+flutter pub get
+flutter run
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Build (Android AAB)
+
+```bash
+flutter build appbundle \
+  --build-name $(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d'+' -f1) \
+  --build-number 1
+```
+
+CI builds on `main` and uploads `trulybudget-android-<semver>+<run_number>`.
+
+## Structure
+
+```
+lib/
+  models/ state/ utils/ widgets/ screens/
+```
+
+## Dev
+
+* Pre-commit: `dart tool/lint_and_fix.dart`
+
+## Notes
+
+* Android CI only for now.
