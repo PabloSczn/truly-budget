@@ -139,6 +139,67 @@ class CategoryDetailScreen extends StatelessWidget {
                     title: Text(e.note),
                     trailing: Text(
                         Format.money(e.amount, symbol: store.currency.symbol)),
+                    onLongPress: () async {
+                      // Cache what we'll need before any awaits
+                      final store = context.read<BudgetStore>();
+                      final messenger = ScaffoldMessenger.of(context);
+
+                      // Quick action sheet
+                      final action = await showModalBottomSheet<String>(
+                        context: context,
+                        showDragHandle: true,
+                        builder: (_) => SafeArea(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ListTile(
+                                leading: const Icon(Icons.delete_outline,
+                                    color: Colors.red),
+                                title: const Text('Delete expense',
+                                    style: TextStyle(color: Colors.red)),
+                                onTap: () => Navigator.pop(context, 'delete'),
+                              ),
+                              const SizedBox(height: 4),
+                              ListTile(
+                                leading: const Icon(Icons.close),
+                                title: const Text('Cancel'),
+                                onTap: () => Navigator.pop(context, 'cancel'),
+                              ),
+                              const SizedBox(height: 8),
+                            ],
+                          ),
+                        ),
+                      );
+                      if (!context.mounted || action != 'delete') return;
+
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          title: const Text('Delete expense?'),
+                          content: Text(
+                            'This will remove:\n\n${e.note}\n'
+                            '${Format.money(e.amount, symbol: store.currency.symbol)}',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: const Text('Cancel'),
+                            ),
+                            FilledButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: Colors.red,
+                              ),
+                              child: const Text('Delete'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (!context.mounted || confirm != true) return;
+                      store.removeExpense(categoryId, i);
+                      messenger.showSnackBar(
+                          const SnackBar(content: Text('Expense deleted')));
+                    },
                   );
                 },
               ),

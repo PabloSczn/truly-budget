@@ -107,6 +107,16 @@ class BudgetStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Delete a single expense by index from a category
+  void removeExpense(String categoryId, int expenseIndex) {
+    final b = currentBudget!;
+    final cat = b.categories.firstWhere((c) => c.id == categoryId);
+    if (expenseIndex >= 0 && expenseIndex < cat.expenses.length) {
+      cat.expenses.removeAt(expenseIndex);
+      notifyListeners();
+    }
+  }
+
   // Year overview helpers
   double totalIncomeFor(int year, int month) {
     final key = '$year-${month.toString().padLeft(2, '0')}';
