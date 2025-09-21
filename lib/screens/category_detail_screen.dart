@@ -136,9 +136,37 @@ class CategoryDetailScreen extends StatelessWidget {
                 itemBuilder: (_, i) {
                   final e = cat.expenses[i];
                   return ListTile(
+                    leading:
+                        Text(e.emoji, style: const TextStyle(fontSize: 20)),
                     title: Text(e.note),
                     trailing: Text(
                         Format.money(e.amount, symbol: store.currency.symbol)),
+                    onTap: () async {
+                      // Cache what we need before awaits (lint-safe)
+                      final store = context.read<BudgetStore>();
+                      final messenger = ScaffoldMessenger.of(context);
+                      final edited =
+                          await showDialog<(String, double, String)?>(
+                        context: context,
+                        builder: (_) => _EditExpenseDialog(
+                          initialNote: e.note,
+                          initialAmount: e.amount,
+                          initialEmoji: e.emoji,
+                        ),
+                      );
+                      if (!context.mounted || edited == null) return;
+                      final (newNote, newAmount, newEmoji) = edited;
+                      store.updateExpense(
+                        categoryId,
+                        i,
+                        note: newNote,
+                        amount: newAmount,
+                        emoji: newEmoji,
+                      );
+                      messenger.showSnackBar(
+                        const SnackBar(content: Text('Expense updated')),
+                      );
+                    },
                     onLongPress: () async {
                       // Cache what we'll need before any awaits
                       final store = context.read<BudgetStore>();
@@ -177,7 +205,7 @@ class CategoryDetailScreen extends StatelessWidget {
                         builder: (_) => AlertDialog(
                           title: const Text('Delete expense?'),
                           content: Text(
-                            'This will remove:\n\n${e.note}\n'
+                            'This will remove:\n\n${e.emoji}  ${e.note}\n'
                             '${Format.money(e.amount, symbol: store.currency.symbol)}',
                           ),
                           actions: [
@@ -290,12 +318,121 @@ class _AddExpenseDialogState extends State<_AddExpenseDialog> {
             if (_formKey.currentState!.validate()) {
               final store = context.read<BudgetStore>();
               final d = double.parse(amountCtrl.text.replaceAll(',', '.'));
-              store.addExpense(widget.categoryId, noteCtrl.text.trim(), d);
+              store.addExpense(
+                widget.categoryId,
+                noteCtrl.text.trim(),
+                d,
+                emoji: leadingEmoji,
+              );
               Navigator.pop(context);
             }
           },
           child: const Text('Add'),
         )
+      ],
+    );
+  }
+}
+
+class _EditExpenseDialog extends StatefulWidget {
+  final String initialNote;
+  final double initialAmount;
+  final String initialEmoji;
+  const _EditExpenseDialog({
+    required this.initialNote,
+    required this.initialAmount,
+    required this.initialEmoji,
+  });
+
+  @override
+  State<_EditExpenseDialog> createState() => _EditExpenseDialogState();
+}
+
+class _EditExpenseDialogState extends State<_EditExpenseDialog> {
+  late final TextEditingController noteCtrl;
+  late final TextEditingController amountCtrl;
+  final _formKey = GlobalKey<FormState>();
+  late String leadingEmoji;
+
+  @override
+  void initState() {
+    super.initState();
+    noteCtrl = TextEditingController(text: widget.initialNote);
+    amountCtrl = TextEditingController(
+      text: widget.initialAmount.toStringAsFixed(2),
+    );
+    leadingEmoji = widget.initialEmoji;
+  }
+
+  @override
+  void dispose() {
+    noteCtrl.dispose();
+    amountCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _insertEmojiFromPicker() async {
+    final e = await pickEmoji(context);
+    if (!mounted || e == null || e.isEmpty) return;
+    setState(() => leadingEmoji = e);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Edit expense'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: noteCtrl,
+              decoration: InputDecoration(
+                labelText: 'What for?',
+                prefixIcon: _EmojiPrefixButton(
+                  emoji: leadingEmoji,
+                  onTap: _insertEmojiFromPicker,
+                ),
+                prefixIconConstraints: const BoxConstraints(
+                    minWidth: 44, minHeight: 44, maxWidth: 52),
+              ),
+              validator: (v) => (v == null || v.trim().isEmpty)
+                  ? 'Please enter a note'
+                  : null,
+            ),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: amountCtrl,
+              decoration: const InputDecoration(labelText: 'Amount'),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              validator: (v) {
+                final d = double.tryParse(v?.replaceAll(',', '.') ?? '');
+                if (d == null || d <= 0) return 'Enter a valid amount';
+                return null;
+              },
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () {
+            if (_formKey.currentState!.validate()) {
+              final d = double.parse(amountCtrl.text.replaceAll(',', '.'));
+              Navigator.pop<(String, double, String)>(
+                context,
+                (noteCtrl.text.trim(), d, leadingEmoji),
+              );
+            }
+          },
+          child: const Text('Save'),
+        ),
       ],
     );
   }

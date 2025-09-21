@@ -100,10 +100,32 @@ class BudgetStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  void addExpense(String categoryId, String note, double amount) {
+  void addExpense(String categoryId, String note, double amount,
+      {String? emoji}) {
     final b = currentBudget!;
     final cat = b.categories.firstWhere((c) => c.id == categoryId);
-    cat.expenses.add(Expense(note: note, amount: amount));
+    cat.expenses.add(Expense(note: note, amount: amount, emoji: emoji));
+    notifyListeners();
+  }
+
+  void updateExpense(
+    String categoryId,
+    int expenseIndex, {
+    String? note,
+    double? amount,
+    DateTime? date,
+    String? emoji,
+  }) {
+    final b = currentBudget!;
+    final cat = b.categories.firstWhere((c) => c.id == categoryId);
+    if (expenseIndex < 0 || expenseIndex >= cat.expenses.length) return;
+    final old = cat.expenses[expenseIndex];
+    cat.expenses[expenseIndex] = Expense(
+      note: note ?? old.note,
+      amount: amount ?? old.amount,
+      emoji: emoji ?? old.emoji,
+      date: date ?? old.date,
+    );
     notifyListeners();
   }
 
