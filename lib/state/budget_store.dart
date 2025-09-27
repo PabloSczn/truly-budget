@@ -1,6 +1,13 @@
+import 'dart:async';
+import 'dart:collection';
+import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
+
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../models/month_budget.dart';
 import '../models/category.dart';
 import '../models/expense.dart';
@@ -13,38 +20,90 @@ class BudgetStore extends ChangeNotifier {
   Currency currency = const Currency('GBP', '£');
   bool initialized = false;
 
+  // File persistence
+  File? _dbFile;
+  Timer? _saveDebounce;
+
+  UnmodifiableMapView<String, MonthBudget> get budgets =>
+      UnmodifiableMapView(_budgets);
+
   MonthBudget? get currentBudget =>
       selectedYMKey == null ? null : _budgets[selectedYMKey];
 
+  String _keyOf(int year, int month) =>
+      '$year-${month.toString().padLeft(2, '0')}';
+
   Future<void> load() async {
-    final prefs = await SharedPreferences.getInstance();
-    final code = prefs.getString('currency_code');
-    final ym = prefs.getString('selected_ym');
-    if (code != null) currency = Currencies.byCode(code);
-    selectedYMKey = ym;
+    // Prepare file
+    final dir = await getApplicationDocumentsDirectory();
+    _dbFile = File('${dir.path}/budgets.json');
+
+    if (await _dbFile!.exists()) {
+      try {
+        final raw = await _dbFile!.readAsString();
+        final data = jsonDecode(raw) as Map<String, dynamic>;
+        final map = (data['budgets'] as Map<String, dynamic>? ?? {});
+        _budgets.clear();
+        map.forEach((k, v) {
+          _budgets[k] = MonthBudget.fromJson(v as Map<String, dynamic>);
+        });
+        final code = data['currency_code'] as String?;
+        if (code != null) currency = Currencies.byCode(code);
+        selectedYMKey = data['selected_ym'] as String?;
+      } catch (_) {
+        // If file is corrupted, keep empty state
+      }
+    } else {
+      // Fallback to previous prefs
+      final prefs = await SharedPreferences.getInstance();
+      final code = prefs.getString('currency_code');
+      final ym = prefs.getString('selected_ym');
+      if (code != null) currency = Currencies.byCode(code);
+      selectedYMKey = ym;
+      await _save();
+    }
+
     initialized = true;
     notifyListeners();
   }
 
-  Future<void> _persist() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('currency_code', currency.code);
-    if (selectedYMKey != null) {
-      await prefs.setString('selected_ym', selectedYMKey!);
+  Map<String, dynamic> _toJson() => {
+        'currency_code': currency.code,
+        'selected_ym': selectedYMKey,
+        'budgets': _budgets.map(
+          (k, v) => MapEntry(k, v.toJson()),
+        ),
+      };
+
+  Future<void> _save() async {
+    if (_dbFile == null) return;
+    final tmp = File('${_dbFile!.path}.tmp');
+    await tmp.writeAsString(jsonEncode(_toJson()));
+    if (await _dbFile!.exists()) {
+      await _dbFile!.delete();
     }
+    await tmp.rename(_dbFile!.path);
+  }
+
+  void _scheduleSave() {
+    _saveDebounce?.cancel();
+    _saveDebounce = Timer(const Duration(milliseconds: 250), () {
+      // fire-and-forget
+      _save();
+    });
   }
 
   void changeCurrency(Currency c) {
     currency = c;
-    _persist();
+    _scheduleSave();
     notifyListeners();
   }
 
   void selectMonth(int year, int month) {
-    final key = '$year-${month.toString().padLeft(2, '0')}';
+    final key = _keyOf(year, month);
     _budgets.putIfAbsent(key, () => MonthBudget(year: year, month: month));
     selectedYMKey = key;
-    _persist();
+    _scheduleSave();
     notifyListeners();
   }
 
@@ -53,9 +112,10 @@ class BudgetStore extends ChangeNotifier {
     final cat = Category(
       id: _rid(),
       name: name.trim(),
-      emoji: emoji.trim().isEmpty ? '📦' : emoji.trim(),
+      emoji: emoji.trim().isEmpty ? '🗂️' : emoji.trim(),
     );
     currentBudget!.categories.add(cat);
+    _scheduleSave();
     notifyListeners();
     return cat;
   }
@@ -75,6 +135,7 @@ class BudgetStore extends ChangeNotifier {
       final cat = b.categories.firstWhere((c) => c.id == entry.key);
       cat.allocated += entry.value;
     }
+    _scheduleSave();
     notifyListeners();
   }
 
@@ -97,6 +158,7 @@ class BudgetStore extends ChangeNotifier {
 
   void addIncome(String source, double amount) {
     currentBudget!.incomes.add(Income(source: source, amount: amount));
+    _scheduleSave();
     notifyListeners();
   }
 
@@ -105,6 +167,7 @@ class BudgetStore extends ChangeNotifier {
     final b = currentBudget!;
     final cat = b.categories.firstWhere((c) => c.id == categoryId);
     cat.expenses.add(Expense(note: note, amount: amount, emoji: emoji));
+    _scheduleSave();
     notifyListeners();
   }
 
@@ -126,6 +189,7 @@ class BudgetStore extends ChangeNotifier {
       emoji: emoji ?? old.emoji,
       date: date ?? old.date,
     );
+    _scheduleSave();
     notifyListeners();
   }
 
@@ -135,26 +199,31 @@ class BudgetStore extends ChangeNotifier {
     final cat = b.categories.firstWhere((c) => c.id == categoryId);
     if (expenseIndex >= 0 && expenseIndex < cat.expenses.length) {
       cat.expenses.removeAt(expenseIndex);
+      _scheduleSave();
       notifyListeners();
     }
   }
 
   // Year overview helpers
   double totalIncomeFor(int year, int month) {
-    final key = '$year-${month.toString().padLeft(2, '0')}';
-    final b = _budgets[key];
+    final b = _budgets[_keyOf(year, month)];
     return b?.totalIncome ?? 0.0;
   }
 
   double totalExpenseFor(int year, int month) {
-    final key = '$year-${month.toString().padLeft(2, '0')}';
-    final b = _budgets[key];
+    final b = _budgets[_keyOf(year, month)];
     if (b == null) return 0.0;
     double total = 0;
     for (final c in b.categories) {
       total += c.spent;
     }
     return total;
+  }
+
+  // List of month keys
+  List<String> get monthKeysDesc {
+    final keys = _budgets.keys.toList()..sort();
+    return keys.reversed.toList();
   }
 
   // simple random id

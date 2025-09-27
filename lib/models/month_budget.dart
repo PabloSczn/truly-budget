@@ -18,4 +18,22 @@ class MonthBudget {
   double get totalIncome => incomes.fold(0.0, (s, i) => s + i.amount);
   double get totalAllocated => categories.fold(0.0, (s, c) => s + c.allocated);
   double get spare => totalIncome - totalAllocated;
+
+  Map<String, dynamic> toJson() => {
+        'year': year,
+        'month': month,
+        'incomes': incomes.map((i) => i.toJson()).toList(),
+        'categories': categories.map((c) => c.toJson()).toList(),
+      };
+
+  factory MonthBudget.fromJson(Map<String, dynamic> json) => MonthBudget(
+        year: json['year'] as int,
+        month: json['month'] as int,
+        incomes: (json['incomes'] as List<dynamic>? ?? const [])
+            .map((i) => Income.fromJson(i as Map<String, dynamic>))
+            .toList(),
+        categories: (json['categories'] as List<dynamic>? ?? const [])
+            .map((c) => Category.fromJson(c as Map<String, dynamic>))
+            .toList(),
+      );
 }
