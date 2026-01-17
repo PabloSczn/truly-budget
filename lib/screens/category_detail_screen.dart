@@ -30,7 +30,7 @@ class CategoryDetailScreen extends StatelessWidget {
             : 'Warning: 81–100% spent.');
 
     return Scaffold(
-      appBar: AppBar(title: Text('${cat.name} — ${cat.emoji}')),
+      appBar: AppBar(title: Text('${cat.name} ${cat.emoji}')),
       floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
       floatingActionButton: FloatingActionButton(
         tooltip: 'Add expense',

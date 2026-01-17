@@ -156,6 +156,47 @@ class BudgetStore extends ChangeNotifier {
     allocateByAmounts(amounts);
   }
 
+  /// Replace category allocations with the provided totals (not incremental)
+  void setAllocationsByAmounts(Map<String, double> newAllocatedByCategoryId) {
+    final b = currentBudget!;
+    double newTotalAllocated = 0.0;
+
+    for (final c in b.categories) {
+      final v = newAllocatedByCategoryId[c.id] ?? c.allocated;
+      if (v.isNaN || v.isInfinite || v < 0) {
+        throw Exception('Invalid allocation for "${c.name}".');
+      }
+      newTotalAllocated += v;
+    }
+
+    if (newTotalAllocated > b.totalIncome + 1e-6) {
+      throw Exception('Total allocations exceed total income.');
+    }
+
+    for (final c in b.categories) {
+      if (newAllocatedByCategoryId.containsKey(c.id)) {
+        c.allocated = newAllocatedByCategoryId[c.id]!;
+      }
+    }
+
+    _scheduleSave();
+    notifyListeners();
+  }
+
+  /// Replace allocations by percentages of TOTAL income
+  void setAllocationsByPercents(Map<String, double> percentsByCategoryId) {
+    final b = currentBudget!;
+    final totalIncome = b.totalIncome;
+
+    final amounts = <String, double>{};
+    percentsByCategoryId.forEach((id, pct) {
+      final p = (pct.isNaN || pct.isInfinite || pct < 0) ? 0.0 : pct;
+      amounts[id] = totalIncome <= 0 ? 0.0 : totalIncome * (p / 100.0);
+    });
+
+    setAllocationsByAmounts(amounts);
+  }
+
   void addIncome(String source, double amount) {
     currentBudget!.incomes.add(Income(source: source, amount: amount));
     _scheduleSave();

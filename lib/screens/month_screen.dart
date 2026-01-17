@@ -39,11 +39,12 @@ class MonthScreen extends StatelessWidget {
     final ratio = b.totalIncome <= 0
         ? 1.0
         : (totalExpenses / b.totalIncome).clamp(0.0, 1.0);
+    final canOpenAllocate = (b.totalIncome > 0) || (b.totalAllocated > 0);
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-            '$ymLabel — Income: ${Format.money(b.totalIncome, symbol: store.currency.symbol)}'),
+            '$ymLabel'),
         actions: const [CurrencySelectorAction()],
       ),
       drawer: const AppMenuDrawer(),
@@ -150,12 +151,11 @@ class MonthScreen extends StatelessWidget {
                 child: const Text('Add income'),
               ),
               FilledButton.tonal(
-                onPressed: spare <= 0
+                onPressed: !canOpenAllocate
                     ? null
                     : () {
                         Navigator.of(context).push(
-                          MaterialPageRoute(
-                              builder: (_) => const AllocateIncomeScreen()),
+                          MaterialPageRoute(builder: (_) => const AllocateIncomeScreen()),
                         );
                       },
                 child: const Text('Allocate income'),
