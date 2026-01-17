@@ -48,7 +48,7 @@ class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
   String _fmtAmount(double v) => v.toStringAsFixed(2);
 
   String _fmtPercent(double v) {
-    // Use 2 decimals to avoid misleading rounding 
+    // Use 2 decimals to avoid misleading rounding
     var s = v.toStringAsFixed(2);
     while (s.contains('.') && (s.endsWith('0') || s.endsWith('.'))) {
       s = s.substring(0, s.length - 1);
@@ -62,7 +62,8 @@ class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
   }
 
   TextEditingController _ensureController(String id, String initialText) {
-    return ctrls.putIfAbsent(id, () => TextEditingController(text: initialText));
+    return ctrls.putIfAbsent(
+        id, () => TextEditingController(text: initialText));
   }
 
   FocusNode _ensureFocusNode(String id) {
@@ -293,11 +294,13 @@ class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
                         );
 
                         if (total > _totalIncome + 1e-6) {
-                          throw Exception('Total allocations exceed total income.');
+                          throw Exception(
+                              'Total allocations exceed total income.');
                         }
 
                         // Save totals (not incremental)
-                        store.setAllocationsByAmounts(Map<String, double>.from(draftAmounts));
+                        store.setAllocationsByAmounts(
+                            Map<String, double>.from(draftAmounts));
 
                         if (!mounted) return;
                         Navigator.of(context).pop();

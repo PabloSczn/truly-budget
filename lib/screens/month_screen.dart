@@ -43,8 +43,7 @@ class MonthScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-            '$ymLabel'),
+        title: Text(ymLabel),
         actions: const [CurrencySelectorAction()],
       ),
       drawer: const AppMenuDrawer(),
@@ -155,7 +154,8 @@ class MonthScreen extends StatelessWidget {
                     ? null
                     : () {
                         Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const AllocateIncomeScreen()),
+                          MaterialPageRoute(
+                              builder: (_) => const AllocateIncomeScreen()),
                         );
                       },
                 child: const Text('Allocate income'),
