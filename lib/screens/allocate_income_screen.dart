@@ -69,26 +69,32 @@ class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
   FocusNode _ensureFocusNode(String id) {
     return foci.putIfAbsent(id, () {
       final node = FocusNode();
-      node.addListener(() {
-        if (!node.hasFocus) return;
 
+      node.addListener(() {
         final ctrl = ctrls[id];
         if (ctrl == null) return;
 
-        final text = ctrl.text;
+        if (node.hasFocus) {
+          final text = ctrl.text;
 
-        // If it's zero (e.g. "0.00" or "0"), clear it for fast entry
-        if (_isDisplayedZero(text)) {
-          ctrl.clear();
-          return;
+          // If it's zero (e.g. "0.00" or "0"), clear it for fast entry
+          if (_isDisplayedZero(text)) {
+            ctrl.clear();
+            return;
+          }
+
+          // Otherwise select all for easy overwrite
+          ctrl.selection = TextSelection(
+            baseOffset: 0,
+            extentOffset: ctrl.text.length,
+          );
+        } else {
+          // Collapse selection so the highlight disappears
+          final len = ctrl.text.length;
+          ctrl.selection = TextSelection.collapsed(offset: len);
         }
-
-        // Otherwise select all for easy overwrite (e.g. "100.00")
-        ctrl.selection = TextSelection(
-          baseOffset: 0,
-          extentOffset: ctrl.text.length,
-        );
       });
+
       return node;
     });
   }
@@ -163,159 +169,167 @@ class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Allocate income')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Allocate your remaining income to categories. You can enter allocations as ${usePercent ? 'percentages (%)' : 'actual amounts'}.',
-            ),
-            const SizedBox(height: 12),
-            Card(
-              elevation: 0,
-              color: Theme.of(context).colorScheme.surfaceContainer,
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        const Text('Use %'),
-                        Switch(
-                          value: usePercent,
-                          onChanged: _toggleMode,
-                        ),
-                        const Spacer(),
-                        Text(
-                          'Income: ${Format.money(_totalIncome, symbol: store.currency.symbol)}',
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Allocated: ${Format.money(draftAllocated, symbol: store.currency.symbol)}',
-                        ),
-                      ],
-                    ),
-                    if (draftUnallocated < -1e-6) ...[
-                      const SizedBox(height: 8),
-                      const Row(
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Allocate your remaining income to categories. You can enter allocations as ${usePercent ? 'percentages (%)' : 'actual amounts'}.',
+              ),
+              const SizedBox(height: 12),
+              Card(
+                elevation: 0,
+                color: Theme.of(context).colorScheme.surfaceContainer,
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    children: [
+                      Row(
                         children: [
-                          Icon(Icons.warning_amber_outlined, color: Colors.red),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'You are allocating more than your total income.',
-                              style: TextStyle(color: Colors.red),
-                            ),
+                          const Text('Use %'),
+                          Switch(
+                            value: usePercent,
+                            onChanged: _toggleMode,
+                          ),
+                          const Spacer(),
+                          Text(
+                            'Income: ${Format.money(_totalIncome, symbol: store.currency.symbol)}',
                           ),
                         ],
                       ),
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Allocated: ${Format.money(draftAllocated, symbol: store.currency.symbol)}',
+                          ),
+                        ],
+                      ),
+                      if (draftUnallocated < -1e-6) ...[
+                        const SizedBox(height: 8),
+                        const Row(
+                          children: [
+                            Icon(Icons.warning_amber_outlined,
+                                color: Colors.red),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'You are allocating more than your total income.',
+                                style: TextStyle(color: Colors.red),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Divider(),
+              Expanded(
+                child: ListView(
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  children: [
+                    for (final c in b.categories)
+                      ListTile(
+                        title: Text('${c.emoji}  ${c.name}'),
+                        trailing: SizedBox(
+                          width: 130,
+                          child: TextField(
+                            controller: ctrls[c.id],
+                            focusNode: foci[c.id],
+                            textAlign: TextAlign.end,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            decoration: InputDecoration(
+                              labelText: usePercent ? '%' : store.currency.code,
+                            ),
+                            onTap: () {
+                              // If the field is already focused, still select all on tap
+                              final ctrl = ctrls[c.id]!;
+                              if (_isDisplayedZero(ctrl.text)) {
+                                ctrl.clear();
+                              } else {
+                                ctrl.selection = TextSelection(
+                                  baseOffset: 0,
+                                  extentOffset: ctrl.text.length,
+                                );
+                              }
+                            },
+                            onChanged: (v) => _onChangedFor(c.id, v),
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        final res = await showDialog<(String, String)?>(
+                          context: context,
+                          builder: (_) => const AddCategoryDialog(),
+                        );
+                        if (res != null) {
+                          final (name, emoji) = res;
+                          final newCat = store.addCategory(name, emoji);
+
+                          draftAmounts[newCat.id] = 0.0;
+
+                          final text = usePercent ? '0' : _fmtAmount(0.0);
+                          ctrls[newCat.id] = TextEditingController(text: text);
+                          _ensureFocusNode(newCat.id);
+
+                          setState(() {});
+                        }
+                      },
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add category'),
+                    ),
                   ],
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-            const Divider(),
-            Expanded(
-              child: ListView(
-                children: [
-                  for (final c in b.categories)
-                    ListTile(
-                      title: Text('${c.emoji}  ${c.name}'),
-                      trailing: SizedBox(
-                        width: 130,
-                        child: TextField(
-                          controller: ctrls[c.id],
-                          focusNode: foci[c.id],
-                          textAlign: TextAlign.end,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          decoration: InputDecoration(
-                            labelText: usePercent ? '%' : store.currency.code,
-                          ),
-                          onTap: () {
-                            // If the field is already focused, still select all on tap
-                            final ctrl = ctrls[c.id]!;
-                            if (_isDisplayedZero(ctrl.text)) {
-                              ctrl.clear();
-                            } else {
-                              ctrl.selection = TextSelection(
-                                baseOffset: 0,
-                                extentOffset: ctrl.text.length,
-                              );
-                            }
-                          },
-                          onChanged: (v) => _onChangedFor(c.id, v),
-                        ),
-                      ),
-                    ),
-                  const SizedBox(height: 8),
-                  OutlinedButton.icon(
-                    onPressed: () async {
-                      final res = await showDialog<(String, String)?>(
-                        context: context,
-                        builder: (_) => const AddCategoryDialog(),
-                      );
-                      if (res != null) {
-                        final (name, emoji) = res;
-                        final newCat = store.addCategory(name, emoji);
+              const SizedBox(height: 8),
+              FilledButton(
+                onPressed: !canSave
+                    ? null
+                    : () {
+                        try {
+                          final total = b.categories.fold<double>(
+                            0.0,
+                            (s, c) => s + (draftAmounts[c.id] ?? 0.0),
+                          );
 
-                        draftAmounts[newCat.id] = 0.0;
+                          if (total > _totalIncome + 1e-6) {
+                            throw Exception(
+                                'Total allocations exceed total income.');
+                          }
 
-                        final text = usePercent ? '0' : _fmtAmount(0.0);
-                        ctrls[newCat.id] = TextEditingController(text: text);
-                        _ensureFocusNode(newCat.id);
+                          // Save totals (not incremental)
+                          store.setAllocationsByAmounts(
+                              Map<String, double>.from(draftAmounts));
 
-                        setState(() {});
-                      }
-                    },
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add category'),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            FilledButton(
-              onPressed: !canSave
-                  ? null
-                  : () {
-                      try {
-                        final total = b.categories.fold<double>(
-                          0.0,
-                          (s, c) => s + (draftAmounts[c.id] ?? 0.0),
-                        );
-
-                        if (total > _totalIncome + 1e-6) {
-                          throw Exception(
-                              'Total allocations exceed total income.');
+                          if (!mounted) return;
+                          Navigator.of(context).pop();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text('Allocations updated.')),
+                          );
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(e.toString())),
+                          );
                         }
-
-                        // Save totals (not incremental)
-                        store.setAllocationsByAmounts(
-                            Map<String, double>.from(draftAmounts));
-
-                        if (!mounted) return;
-                        Navigator.of(context).pop();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Allocations updated.')),
-                        );
-                      } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(e.toString())),
-                        );
-                      }
-                    },
-              child: const Text('Save allocations'),
-            ),
-          ],
+                      },
+                child: const Text('Save allocations'),
+              ),
+            ],
+          ),
         ),
       ),
     );
