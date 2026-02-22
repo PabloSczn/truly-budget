@@ -242,7 +242,7 @@ class _MonthScreenState extends State<MonthScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(12.0),
                 child: Text(
-                  'You have ${Format.money(spare, symbol: store.currency.symbol)} spare! You can use this as your savings.\nTip: Create a category for savings and take your savings as expenses so you save every month.',
+                  'You have ${Format.money(spare, symbol: store.currency.symbol)} spare! \nTip: Create a category for savings and take your savings as expenses so you save every month.',
                 ),
               ),
             ),
