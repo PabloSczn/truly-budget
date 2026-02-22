@@ -4,6 +4,11 @@ import '../state/budget_store.dart';
 import '../widgets/month_overview_tile.dart';
 import 'month_screen.dart';
 import '../utils/format.dart';
+import '../utils/year_month.dart';
+
+enum _YearMonthTileAction { complete, delete, cancel }
+
+enum _YearDebtChoice { keepInMonth, carryForward, cancel }
 
 class YearOverviewScreen extends StatefulWidget {
   const YearOverviewScreen({super.key});
@@ -14,6 +19,217 @@ class YearOverviewScreen extends StatefulWidget {
 
 class _YearOverviewScreenState extends State<YearOverviewScreen> {
   int year = DateTime.now().year;
+
+  Future<void> _handleCarryForwardForCompletion(String ymKey) async {
+    final store = context.read<BudgetStore>();
+    final nextMonthLabel = YearMonth.labelFromKey(store.nextMonthKeyOf(ymKey));
+    var carryResult = store.carryDebtForwardToNextMonth(ymKey);
+
+    if (carryResult == CarryForwardDebtResult.nextMonthMissing) {
+      final createNext = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Create next month first?'),
+          content: Text(
+            'To carry debt forward, create $nextMonthLabel first.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Not now'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Create month'),
+            ),
+          ],
+        ),
+      );
+      if (!mounted || createNext != true) return;
+      carryResult = store.carryDebtForwardToNextMonth(ymKey,
+          createNextMonthIfMissing: true);
+    }
+
+    if (!mounted) return;
+
+    if (carryResult != CarryForwardDebtResult.success) {
+      var message = 'Debt could not be carried forward.';
+      if (carryResult == CarryForwardDebtResult.nextMonthCompleted) {
+        message = '$nextMonthLabel is completed. Reopen it first.';
+      } else if (carryResult == CarryForwardDebtResult.debtAlreadyCarried) {
+        message = 'Debt was already carried forward.';
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+      return;
+    }
+
+    store.completeMonth(ymKey);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Month completed and debt carried to next month.'),
+      ),
+    );
+  }
+
+  Future<void> _completeMonthFlow(String ymKey) async {
+    final store = context.read<BudgetStore>();
+    final b = store.budgets[ymKey];
+    if (b == null) return;
+
+    final debt = store.debtForBudget(b);
+    final debtAlreadyCarried =
+        (b.carriedDebtToKey ?? '').isNotEmpty && b.carriedDebtAmount > 0;
+
+    if (debt <= 0 || debtAlreadyCarried) {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Complete this month budget?'),
+          content: Text(
+            debtAlreadyCarried
+                ? 'Debt was already carried forward. This month will become read-only.'
+                : 'This month will become read-only.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Complete'),
+            ),
+          ],
+        ),
+      );
+      if (!mounted || confirm != true) return;
+      store.completeMonth(ymKey);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Month budget completed.')),
+      );
+      return;
+    }
+
+    final debtChoice = await showDialog<_YearDebtChoice>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('This month has debt'),
+        content: Text(
+          'Debt: ${Format.money(debt, symbol: store.currency.symbol)}.\n\n'
+          'How should this debt be handled before completing the month?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, _YearDebtChoice.cancel),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.pop(context, _YearDebtChoice.keepInMonth),
+            child: const Text('Keep debt in this month'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.pop(context, _YearDebtChoice.carryForward),
+            child: const Text('Carry debt forward'),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted ||
+        debtChoice == null ||
+        debtChoice == _YearDebtChoice.cancel) {
+      return;
+    }
+
+    if (debtChoice == _YearDebtChoice.keepInMonth) {
+      store.completeMonth(ymKey);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Month completed. Debt stayed in this month.')),
+      );
+      return;
+    }
+
+    await _handleCarryForwardForCompletion(ymKey);
+  }
+
+  Future<void> _showMonthActions(String ymKey) async {
+    final store = context.read<BudgetStore>();
+    final b = store.budgets[ymKey];
+    if (b == null) return;
+
+    final action = await showModalBottomSheet<_YearMonthTileAction>(
+      context: context,
+      showDragHandle: true,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!b.isCompleted)
+              ListTile(
+                leading: const Icon(Icons.check_circle_outline),
+                title: const Text('Complete month budget'),
+                onTap: () =>
+                    Navigator.pop(context, _YearMonthTileAction.complete),
+              ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: Colors.red),
+              title: const Text(
+                'Delete month budget',
+                style: TextStyle(color: Colors.red),
+              ),
+              onTap: () => Navigator.pop(context, _YearMonthTileAction.delete),
+            ),
+            ListTile(
+              leading: const Icon(Icons.close),
+              title: const Text('Cancel'),
+              onTap: () => Navigator.pop(context, _YearMonthTileAction.cancel),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (!mounted || action == null || action == _YearMonthTileAction.cancel) {
+      return;
+    }
+
+    if (action == _YearMonthTileAction.complete) {
+      await _completeMonthFlow(ymKey);
+      return;
+    }
+
+    final confirmDelete = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Delete this month budget?'),
+        content: Text(
+          '${YearMonth.labelFromKey(ymKey)} will be permanently removed.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted || confirmDelete != true) return;
+    store.deleteMonth(ymKey);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Month budget deleted.')),
+    );
+  }
 
   Color _statusColor(double income, double expenses) {
     if (income == 0 && expenses == 0) return Colors.blueGrey.shade200;
@@ -28,10 +244,8 @@ class _YearOverviewScreenState extends State<YearOverviewScreen> {
   Widget build(BuildContext context) {
     final store = context.watch<BudgetStore>();
 
-    final ymKeys = store.budgets.keys
-        .where((k) => k.startsWith('$year-'))
-        .toList()
-      ..sort();
+    final ymKeys =
+        store.monthKeysDesc.where((k) => k.startsWith('$year-')).toList();
 
     // Yearly totals
     double totalIncome = 0;
@@ -100,6 +314,7 @@ class _YearOverviewScreenState extends State<YearOverviewScreen> {
                                     builder: (_) => const MonthScreen()),
                               );
                             },
+                            onLongPress: () => _showMonthActions(key),
                           );
                         },
                       ),
