@@ -27,7 +27,7 @@ class AppMenuDrawer extends StatelessWidget {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.calendar_month_outlined, size: 22),
+              leading: const Icon(Icons.calendar_month_outlined, size: 21.5),
               title: const Text('Year Overview'),
               onTap: () {
                 Navigator.of(context).pop();
