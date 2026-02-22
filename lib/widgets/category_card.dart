@@ -72,8 +72,9 @@ class CategoryCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text('Spent: ${Format.money(spent, symbol: currencySymbol)}'),
-                  Text(
-                      'Left: ${Format.money(remaining.clamp(0, double.infinity), symbol: currencySymbol)}'),
+                  if (!isUncategorized)
+                    Text(
+                        'Left: ${Format.money(remaining.clamp(0, double.infinity), symbol: currencySymbol)}'),
                 ],
               )
             ],
