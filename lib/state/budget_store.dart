@@ -16,6 +16,7 @@ import '../models/currency.dart';
 
 class BudgetStore extends ChangeNotifier {
   final Map<String, MonthBudget> _budgets = {}; // key: YYYY-MM
+  final Set<String> _dismissedTipIds = <String>{};
   String? selectedYMKey;
   Currency currency = const Currency('GBP', '£');
   bool initialized = false;
@@ -50,6 +51,12 @@ class BudgetStore extends ChangeNotifier {
         final code = data['currency_code'] as String?;
         if (code != null) currency = Currencies.byCode(code);
         selectedYMKey = data['selected_ym'] as String?;
+        _dismissedTipIds
+          ..clear()
+          ..addAll(
+            (data['dismissed_tips'] as List<dynamic>? ?? [])
+                .whereType<String>(),
+          );
       } catch (_) {
         // If file is corrupted, keep empty state
       }
@@ -70,6 +77,7 @@ class BudgetStore extends ChangeNotifier {
   Map<String, dynamic> _toJson() => {
         'currency_code': currency.code,
         'selected_ym': selectedYMKey,
+        'dismissed_tips': _dismissedTipIds.toList()..sort(),
         'budgets': _budgets.map(
           (k, v) => MapEntry(k, v.toJson()),
         ),
@@ -97,6 +105,15 @@ class BudgetStore extends ChangeNotifier {
     currency = c;
     _scheduleSave();
     notifyListeners();
+  }
+
+  bool isTipDismissed(String tipId) => _dismissedTipIds.contains(tipId);
+
+  void dismissTip(String tipId) {
+    if (_dismissedTipIds.add(tipId)) {
+      _scheduleSave();
+      notifyListeners();
+    }
   }
 
   void selectMonth(int year, int month) {

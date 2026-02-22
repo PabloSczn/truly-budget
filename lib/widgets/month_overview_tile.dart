@@ -25,7 +25,7 @@ class MonthOverviewTile extends StatelessWidget {
     return Card(
       child: ListTile(
         onTap: onTap,
-        leading: const Icon(Icons.calendar_month),
+        leading: const Icon(Icons.account_balance_wallet_outlined),
         title: Text(YearMonth.labelFromKey(ymKey)),
         subtitle: Text(
           'Income: ${Format.money(income, symbol: store.currency.symbol)}\n'

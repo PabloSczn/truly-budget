@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../screens/landing_screen.dart';
+import '../screens/year_overview_screen.dart';
 import '../screens/about_screen.dart';
 
 class AppMenuDrawer extends StatelessWidget {
@@ -15,7 +16,7 @@ class AppMenuDrawer extends StatelessWidget {
               child: Text('TrulyBudget', style: TextStyle(fontSize: 24)),
             ),
             ListTile(
-              leading: const Icon(Icons.home_outlined),
+              leading: const Icon(Icons.home_outlined, size: 22),
               title: const Text('Home'),
               onTap: () {
                 Navigator.of(context).pop(); // close drawer
@@ -26,7 +27,19 @@ class AppMenuDrawer extends StatelessWidget {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.info_outline),
+              leading: const Icon(Icons.calendar_month_outlined, size: 21.5),
+              title: const Text('Year Overview'),
+              onTap: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const YearOverviewScreen(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.info_outline, size: 22),
               title: const Text('About'),
               onTap: () {
                 Navigator.of(context).pop();
