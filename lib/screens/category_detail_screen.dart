@@ -32,16 +32,15 @@ class CategoryDetailScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: Text('${cat.name} ${cat.emoji}')),
-      floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: FloatingActionButton(
         tooltip: 'Add expense',
-        onPressed: remaining <= 0
-            ? null
-            : () async {
-                await showDialog(
-                    context: context,
-                    builder: (_) => AddExpenseDialog(categoryId: categoryId));
-              },
+        onPressed: () async {
+          await showDialog(
+            context: context,
+            builder: (_) => AddExpenseDialog(categoryId: categoryId),
+          );
+        },
         child: const Icon(Icons.add),
       ),
       body: Padding(

@@ -88,7 +88,11 @@ class _MonthScreenState extends State<MonthScreen> {
     final overallDebt = (totalExpenses - b.totalIncome) > 0
         ? (totalExpenses - b.totalIncome)
         : 0.0;
-    final overCats = b.categories.where((c) => c.spent > c.allocated).toList();
+    final overCats = b.categories
+        .where((c) =>
+            c.name.trim().toLowerCase() != 'uncategorized' &&
+            c.spent > c.allocated)
+        .toList();
     final statusColor = _statusColor(b.totalIncome, totalExpenses);
     final ratio = b.totalIncome <= 0
         ? 1.0

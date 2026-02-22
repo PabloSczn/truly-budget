@@ -53,7 +53,8 @@ class CategoryCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  Text(Format.money(allocated, symbol: currencySymbol)),
+                  if (!isUncategorized)
+                    Text(Format.money(allocated, symbol: currencySymbol)),
                 ],
               ),
               const SizedBox(height: 10),
