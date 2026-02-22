@@ -6,7 +6,10 @@ import '../widgets/currency_selector.dart';
 import 'month_selection_screen.dart';
 import 'year_overview_screen.dart';
 import '../widgets/app_menu_drawer.dart';
+import '../widgets/dismissible_tip_banner.dart';
 import '../widgets/month_overview_tile.dart';
+
+const _landingStartTipId = 'landing_start_tip';
 
 class LandingScreen extends StatelessWidget {
   const LandingScreen({super.key});
@@ -125,12 +128,15 @@ class LandingScreen extends StatelessWidget {
                   );
                 },
               ),
-          ] else
+          ] else if (!store.isTipDismissed(_landingStartTipId))
             Padding(
               padding: const EdgeInsets.only(top: 8.0),
-              child: Text(
-                'Tip: Start by creating a new month. You can switch currency from the top right.',
-                style: Theme.of(context).textTheme.bodySmall,
+              child: DismissibleTipBanner(
+                message:
+                    'Start by creating a new month. You can switch currency from the top right.',
+                onClose: () {
+                  context.read<BudgetStore>().dismissTip(_landingStartTipId);
+                },
               ),
             ),
         ],

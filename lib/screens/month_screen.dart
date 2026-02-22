@@ -12,6 +12,9 @@ import 'add_income_screen.dart';
 import 'allocate_income_screen.dart';
 import 'category_detail_screen.dart';
 import '../widgets/app_menu_drawer.dart';
+import '../widgets/dismissible_tip_banner.dart';
+
+const _monthSpareTipId = 'month_spare_tip';
 
 class MonthScreen extends StatefulWidget {
   const MonthScreen({super.key});
@@ -82,8 +85,8 @@ class _MonthScreenState extends State<MonthScreen> {
     final store = context.watch<BudgetStore>();
     final b = store.currentBudget!;
     final ymLabel = YearMonth(b.year, b.month).label;
-    final spare = b.spare;
     final totalExpenses = b.categories.fold<double>(0.0, (s, c) => s + c.spent);
+    final remainingAfterExpenses = b.totalIncome - totalExpenses;
     final overallDebt = (totalExpenses - b.totalIncome) > 0
         ? (totalExpenses - b.totalIncome)
         : 0.0;
@@ -236,21 +239,21 @@ class _MonthScreenState extends State<MonthScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          if (spare > 0)
-            Card(
-              color: Theme.of(context).colorScheme.secondaryContainer,
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Text(
-                  'You have ${Format.money(spare, symbol: store.currency.symbol)} spare! \nTip: Create a category for savings and take your savings as expenses so you save every month.',
-                ),
-              ),
+          if (remainingAfterExpenses > 0 &&
+              !store.isTipDismissed(_monthSpareTipId))
+            DismissibleTipBanner(
+              message:
+                  'You still have ${Format.money(remainingAfterExpenses, symbol: store.currency.symbol)} left this month! If you want to save money, you could create a savings category and record these as an expense so you force yourself to save.',
+              onClose: () {
+                context.read<BudgetStore>().dismissTip(_monthSpareTipId);
+              },
             ),
           const SizedBox(height: 8),
           if (b.categories.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 18.0),
-              child: Text('No categories yet. Add one to get started.'),
+              child: Text(
+                  'Nothing here yet. Add an expense or category to get started.'),
             ),
           ...b.categories.map((c) => CategoryCard(
                 category: c,
