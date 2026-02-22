@@ -221,7 +221,7 @@ class _MonthScreenState extends State<MonthScreen> {
                               builder: (_) => const AllocateIncomeScreen()),
                         );
                       },
-                child: const Text('Allocate income'),
+                child: const Text('Allocate funds'),
               ),
               OutlinedButton(
                 onPressed: () {
