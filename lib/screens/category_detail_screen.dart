@@ -14,6 +14,7 @@ class CategoryDetailScreen extends StatelessWidget {
     final store = context.watch<BudgetStore>();
     final b = store.currentBudget!;
     final cat = b.categories.firstWhere((c) => c.id == categoryId);
+    final isUncategorized = cat.name.trim().toLowerCase() == 'uncategorized';
 
     final spent = cat.spent;
     final allocated = cat.allocated;
@@ -46,43 +47,45 @@ class CategoryDetailScreen extends StatelessWidget {
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Allocated vs Spent',
-              style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: LinearProgressIndicator(
-              value: ratio,
-              minHeight: 14,
-              color: statusColor,
-              backgroundColor: statusColor.withValues(alpha: 0.15),
+          if (!isUncategorized) ...[
+            Text('Allocated vs Spent',
+                style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                value: ratio,
+                minHeight: 14,
+                color: statusColor,
+                backgroundColor: statusColor.withValues(alpha: 0.15),
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                  'Allocated: ${Format.money(allocated, symbol: store.currency.symbol)}'),
-              Text(
-                  'Spent: ${Format.money(spent, symbol: store.currency.symbol)}'),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Card(
-            color: statusColor.withValues(alpha: 0.1),
-            child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Text(statusText,
-                  style: TextStyle(color: statusColor.shade700)),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                    'Allocated: ${Format.money(allocated, symbol: store.currency.symbol)}'),
+                Text(
+                    'Spent: ${Format.money(spent, symbol: store.currency.symbol)}'),
+              ],
             ),
-          ),
-          if (remaining <= 0)
-            Padding(
-              padding: const EdgeInsets.only(top: 12.0),
-              child: Text('No more money is available for this category.',
-                  style: TextStyle(color: Colors.red.shade600)),
+            const SizedBox(height: 12),
+            Card(
+              color: statusColor.withValues(alpha: 0.1),
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Text(statusText,
+                    style: TextStyle(color: statusColor.shade700)),
+              ),
             ),
+            if (remaining <= 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 12.0),
+                child: Text('No more money is available for this category.',
+                    style: TextStyle(color: Colors.red.shade600)),
+              ),
+          ],
           const SizedBox(height: 16),
           Text('Expenses', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
