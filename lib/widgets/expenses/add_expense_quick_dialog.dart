@@ -52,7 +52,7 @@ class _QuickAddExpenseDialogState extends State<QuickAddExpenseDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Quick add expense'),
+      title: const Text('Add expense'),
       content: Form(
         key: _formKey,
         child: Column(

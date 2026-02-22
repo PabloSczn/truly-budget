@@ -174,7 +174,7 @@ class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
         allocCategories.any((c) => (draftAmounts[c.id] ?? 0.0) > 0);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Allocate income')),
+      appBar: AppBar(title: const Text('Allocate funds')),
       body: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
