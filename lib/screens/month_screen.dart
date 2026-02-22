@@ -71,6 +71,84 @@ class _MonthScreenState extends State<MonthScreen> {
     );
   }
 
+  Future<void> _carryDebtForwardFromCurrentMonth() async {
+    final store = context.read<BudgetStore>();
+    final b = store.currentBudget;
+    if (b == null) return;
+    if (b.isCompleted) return;
+
+    final ymKey = YearMonth(b.year, b.month).key;
+    final debt = store.debtForBudget(b);
+    if (debt <= 0) return;
+
+    final nextMonthLabel = YearMonth.labelFromKey(store.nextMonthKeyOf(ymKey));
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Carry debt forward?'),
+        content: Text(
+          'Move ${Format.money(debt, symbol: store.currency.symbol)} to $nextMonthLabel as an expense in Uncategorized.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Carry forward'),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted || confirm != true) return;
+
+    final result = store.carryDebtForwardToNextMonth(ymKey);
+    if (!mounted) return;
+
+    switch (result) {
+      case CarryForwardDebtResult.success:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Debt carried to $nextMonthLabel.')),
+        );
+        break;
+      case CarryForwardDebtResult.nextMonthMissing:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Create $nextMonthLabel first to carry debt forward.',
+            ),
+          ),
+        );
+        break;
+      case CarryForwardDebtResult.nextMonthCompleted:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '$nextMonthLabel is completed. Reopen it before carrying debt.',
+            ),
+          ),
+        );
+        break;
+      case CarryForwardDebtResult.debtAlreadyCarried:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Debt was already carried forward.')),
+        );
+        break;
+      case CarryForwardDebtResult.monthHasNoDebt:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('This month has no debt to carry.')),
+        );
+        break;
+      case CarryForwardDebtResult.monthMissing:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Month not found.')),
+        );
+        break;
+    }
+  }
+
   Color _statusColor(double income, double expenses) {
     if (income == 0 && expenses == 0) return Colors.blueGrey.shade200;
     if (income <= 0 && expenses > 0) return Colors.red;
@@ -84,6 +162,8 @@ class _MonthScreenState extends State<MonthScreen> {
   Widget build(BuildContext context) {
     final store = context.watch<BudgetStore>();
     final b = store.currentBudget!;
+    final canEdit = !b.isCompleted;
+    final ymKey = YearMonth(b.year, b.month).key;
     final ymLabel = YearMonth(b.year, b.month).label;
     final totalExpenses = b.categories.fold<double>(0.0, (s, c) => s + c.spent);
     final remainingAfterExpenses = b.totalIncome - totalExpenses;
@@ -99,7 +179,14 @@ class _MonthScreenState extends State<MonthScreen> {
     final ratio = b.totalIncome <= 0
         ? 1.0
         : (totalExpenses / b.totalIncome).clamp(0.0, 1.0);
-    final canOpenAllocate = (b.totalIncome > 0) || (b.totalAllocated > 0);
+    final canOpenAllocate =
+        canEdit && ((b.totalIncome > 0) || (b.totalAllocated > 0));
+    final nextMonthLabel = YearMonth.labelFromKey(store.nextMonthKeyOf(ymKey));
+    final hasNextMonth = store.hasNextMonthCreated(ymKey);
+    final debtAlreadyCarried =
+        (b.carriedDebtToKey ?? '').isNotEmpty && b.carriedDebtAmount > 0;
+    final carriedToLabel =
+        debtAlreadyCarried ? YearMonth.labelFromKey(b.carriedDebtToKey!) : null;
 
     return Scaffold(
       appBar: AppBar(
@@ -108,13 +195,35 @@ class _MonthScreenState extends State<MonthScreen> {
       ),
       drawer: const AppMenuDrawer(),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: _QuickAddFab(
-        onAddExpense: _showAddExpenseDialog,
-        onAddCategory: _showAddCategoryDialog,
-      ),
+      floatingActionButton: canEdit
+          ? _QuickAddFab(
+              onAddExpense: _showAddExpenseDialog,
+              onAddCategory: _showAddCategoryDialog,
+            )
+          : null,
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          if (!canEdit) ...[
+            Card(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              child: const Padding(
+                padding: EdgeInsets.all(12.0),
+                child: Row(
+                  children: [
+                    Icon(Icons.lock_outline),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'This month budget is completed. It is now read-only.',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
           // Income vs Expenses summary
           Card(
             child: Padding(
@@ -166,6 +275,29 @@ class _MonthScreenState extends State<MonthScreen> {
                         ],
                       ),
                     ),
+                    if (canEdit && debtAlreadyCarried) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'Debt already carried to $carriedToLabel.',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ] else if (canEdit && hasNextMonth) ...[
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          onPressed: _carryDebtForwardFromCurrentMonth,
+                          icon: const Icon(Icons.forward),
+                          label: Text('Carry debt to $nextMonthLabel'),
+                        ),
+                      ),
+                    ] else if (canEdit) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'Create $nextMonthLabel to carry this debt forward.',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
                   ],
                 ],
               ),
@@ -209,13 +341,15 @@ class _MonthScreenState extends State<MonthScreen> {
                 children: [
                   Expanded(
                     child: FilledButton(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const AddIncomeScreen(),
-                          ),
-                        );
-                      },
+                      onPressed: !canEdit
+                          ? null
+                          : () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const AddIncomeScreen(),
+                                ),
+                              );
+                            },
                       child: const Text('Add income'),
                     ),
                   ),

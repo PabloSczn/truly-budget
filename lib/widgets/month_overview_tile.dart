@@ -7,11 +7,13 @@ import '../utils/format.dart';
 class MonthOverviewTile extends StatelessWidget {
   final String ymKey;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   const MonthOverviewTile({
     super.key,
     required this.ymKey,
     required this.onTap,
+    this.onLongPress,
   });
 
   @override
@@ -21,13 +23,16 @@ class MonthOverviewTile extends StatelessWidget {
     final income = b.totalIncome;
     final expenses = b.categories.fold<double>(0, (s, c) => s + c.spent);
     final spare = income - expenses;
+    final statusLabel = b.isCompleted ? 'Completed' : 'Active';
 
     return Card(
       child: ListTile(
         onTap: onTap,
+        onLongPress: onLongPress,
         leading: const Icon(Icons.account_balance_wallet_outlined),
         title: Text(YearMonth.labelFromKey(ymKey)),
         subtitle: Text(
+          '$statusLabel month budget\n'
           'Income: ${Format.money(income, symbol: store.currency.symbol)}\n'
           'Expenses: ${Format.money(expenses, symbol: store.currency.symbol)}',
         ),

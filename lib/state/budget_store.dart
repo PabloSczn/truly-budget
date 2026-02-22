@@ -13,6 +13,16 @@ import '../models/category.dart';
 import '../models/expense.dart';
 import '../models/income.dart';
 import '../models/currency.dart';
+import '../utils/year_month.dart';
+
+enum CarryForwardDebtResult {
+  success,
+  monthMissing,
+  monthHasNoDebt,
+  debtAlreadyCarried,
+  nextMonthMissing,
+  nextMonthCompleted,
+}
 
 class BudgetStore extends ChangeNotifier {
   final Map<String, MonthBudget> _budgets = {}; // key: YYYY-MM
@@ -33,6 +43,60 @@ class BudgetStore extends ChangeNotifier {
 
   String _keyOf(int year, int month) =>
       '$year-${month.toString().padLeft(2, '0')}';
+
+  (int, int) _partsFromKey(String ymKey) {
+    final parts = ymKey.split('-');
+    if (parts.length != 2) {
+      throw Exception('Invalid month key: $ymKey');
+    }
+    return (int.parse(parts[0]), int.parse(parts[1]));
+  }
+
+  String nextMonthKeyOf(String ymKey) {
+    final (year, month) = _partsFromKey(ymKey);
+    if (month == 12) {
+      return _keyOf(year + 1, 1);
+    }
+    return _keyOf(year, month + 1);
+  }
+
+  bool hasMonthKey(String ymKey) => _budgets.containsKey(ymKey);
+
+  bool hasNextMonthCreated(String ymKey) => hasMonthKey(nextMonthKeyOf(ymKey));
+
+  bool isMonthCompleted(String ymKey) => _budgets[ymKey]?.isCompleted ?? false;
+
+  double debtForMonthKey(String ymKey) {
+    final b = _budgets[ymKey];
+    if (b == null) return 0.0;
+    return debtForBudget(b);
+  }
+
+  double debtForBudget(MonthBudget budget) {
+    final expenses = budget.categories.fold<double>(0.0, (s, c) => s + c.spent);
+    final debt = expenses - budget.totalIncome;
+    return debt > 0 ? debt : 0.0;
+  }
+
+  Category _ensureUncategorized(MonthBudget b) {
+    for (final c in b.categories) {
+      if (c.name.trim().toLowerCase() == 'uncategorized') return c;
+    }
+    final cat = Category(
+      id: _rid(),
+      name: 'Uncategorized',
+      emoji: '🗂️',
+    );
+    b.categories.add(cat);
+    return cat;
+  }
+
+  void _assertEditable(MonthBudget b) {
+    if (b.isCompleted) {
+      throw Exception(
+          'This month is completed. Reopen it before making changes.');
+    }
+  }
 
   Future<void> load() async {
     // Prepare file
@@ -116,6 +180,16 @@ class BudgetStore extends ChangeNotifier {
     }
   }
 
+  void createMonth(int year, int month, {bool select = false}) {
+    final key = _keyOf(year, month);
+    _budgets.putIfAbsent(key, () => MonthBudget(year: year, month: month));
+    if (select) {
+      selectedYMKey = key;
+    }
+    _scheduleSave();
+    notifyListeners();
+  }
+
   void selectMonth(int year, int month) {
     final key = _keyOf(year, month);
     _budgets.putIfAbsent(key, () => MonthBudget(year: year, month: month));
@@ -124,8 +198,96 @@ class BudgetStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool completeMonth(String ymKey) {
+    final b = _budgets[ymKey];
+    if (b == null) return false;
+    if (b.isCompleted) return true;
+    b.isCompleted = true;
+    if (selectedYMKey == ymKey) {
+      final activeKeys = activeMonthKeysDesc;
+      selectedYMKey = activeKeys.isNotEmpty ? activeKeys.first : null;
+    }
+    _scheduleSave();
+    notifyListeners();
+    return true;
+  }
+
+  bool reopenMonth(String ymKey) {
+    final b = _budgets[ymKey];
+    if (b == null) return false;
+    if (!b.isCompleted) return true;
+    b.isCompleted = false;
+    _scheduleSave();
+    notifyListeners();
+    return true;
+  }
+
+  bool deleteMonth(String ymKey) {
+    final removed = _budgets.remove(ymKey);
+    if (removed == null) return false;
+    if (selectedYMKey == ymKey) {
+      final activeKeys = activeMonthKeysDesc;
+      selectedYMKey = activeKeys.isNotEmpty ? activeKeys.first : null;
+    }
+    for (final b in _budgets.values) {
+      if (b.carriedDebtToKey == ymKey) {
+        b.carriedDebtToKey = null;
+        b.carriedDebtAmount = 0.0;
+      }
+    }
+    _scheduleSave();
+    notifyListeners();
+    return true;
+  }
+
+  CarryForwardDebtResult carryDebtForwardToNextMonth(
+    String ymKey, {
+    bool createNextMonthIfMissing = false,
+  }) {
+    final source = _budgets[ymKey];
+    if (source == null) return CarryForwardDebtResult.monthMissing;
+    final debt = debtForBudget(source);
+    if (debt <= 0) return CarryForwardDebtResult.monthHasNoDebt;
+    if ((source.carriedDebtToKey ?? '').isNotEmpty &&
+        source.carriedDebtAmount > 0) {
+      return CarryForwardDebtResult.debtAlreadyCarried;
+    }
+
+    final nextKey = nextMonthKeyOf(ymKey);
+    MonthBudget? target = _budgets[nextKey];
+    if (target == null) {
+      if (!createNextMonthIfMissing) {
+        return CarryForwardDebtResult.nextMonthMissing;
+      }
+      final (nextYear, nextMonth) = _partsFromKey(nextKey);
+      target = MonthBudget(year: nextYear, month: nextMonth);
+      _budgets[nextKey] = target;
+    }
+
+    final targetBudget = target;
+    if (targetBudget.isCompleted) {
+      return CarryForwardDebtResult.nextMonthCompleted;
+    }
+
+    final uncategorized = _ensureUncategorized(targetBudget);
+    final (year, month) = _partsFromKey(ymKey);
+    uncategorized.expenses.add(
+      Expense(
+        note: YearMonth(year, month).label,
+        amount: debt,
+        emoji: '💸',
+      ),
+    );
+    source.carriedDebtToKey = nextKey;
+    source.carriedDebtAmount = debt;
+    _scheduleSave();
+    notifyListeners();
+    return CarryForwardDebtResult.success;
+  }
+
   // Categories
   Category addCategory(String name, String emoji) {
+    _assertEditable(currentBudget!);
     final cat = Category(
       id: _rid(),
       name: name.trim(),
@@ -139,6 +301,7 @@ class BudgetStore extends ChangeNotifier {
 
   void allocateByAmounts(Map<String, double> amounts) {
     final b = currentBudget!;
+    _assertEditable(b);
     final available = max(0.0, b.spare);
     double totalAdd = 0;
     for (final v in amounts.values) {
@@ -158,6 +321,7 @@ class BudgetStore extends ChangeNotifier {
 
   void allocateByPercents(Map<String, double> percents) {
     final b = currentBudget!;
+    _assertEditable(b);
     final available = max(0.0, b.spare);
     double pctSum = 0;
     for (final p in percents.values) {
@@ -176,6 +340,7 @@ class BudgetStore extends ChangeNotifier {
   /// Replace category allocations with the provided totals (not incremental)
   void setAllocationsByAmounts(Map<String, double> newAllocatedByCategoryId) {
     final b = currentBudget!;
+    _assertEditable(b);
     double newTotalAllocated = 0.0;
 
     for (final c in b.categories) {
@@ -203,6 +368,7 @@ class BudgetStore extends ChangeNotifier {
   /// Replace allocations by percentages of TOTAL income
   void setAllocationsByPercents(Map<String, double> percentsByCategoryId) {
     final b = currentBudget!;
+    _assertEditable(b);
     final totalIncome = b.totalIncome;
 
     final amounts = <String, double>{};
@@ -215,6 +381,7 @@ class BudgetStore extends ChangeNotifier {
   }
 
   void addIncome(String source, double amount) {
+    _assertEditable(currentBudget!);
     currentBudget!.incomes.add(Income(source: source, amount: amount));
     _scheduleSave();
     notifyListeners();
@@ -223,6 +390,7 @@ class BudgetStore extends ChangeNotifier {
   void addExpense(String categoryId, String note, double amount,
       {String? emoji}) {
     final b = currentBudget!;
+    _assertEditable(b);
     final cat = b.categories.firstWhere((c) => c.id == categoryId);
     cat.expenses.add(Expense(note: note, amount: amount, emoji: emoji));
     _scheduleSave();
@@ -238,6 +406,7 @@ class BudgetStore extends ChangeNotifier {
     String? emoji,
   }) {
     final b = currentBudget!;
+    _assertEditable(b);
     final cat = b.categories.firstWhere((c) => c.id == categoryId);
     if (expenseIndex < 0 || expenseIndex >= cat.expenses.length) return;
     final old = cat.expenses[expenseIndex];
@@ -254,6 +423,7 @@ class BudgetStore extends ChangeNotifier {
   // Delete a single expense by index from a category
   void removeExpense(String categoryId, int expenseIndex) {
     final b = currentBudget!;
+    _assertEditable(b);
     final cat = b.categories.firstWhere((c) => c.id == categoryId);
     if (expenseIndex >= 0 && expenseIndex < cat.expenses.length) {
       cat.expenses.removeAt(expenseIndex);
@@ -281,6 +451,24 @@ class BudgetStore extends ChangeNotifier {
   // List of month keys
   List<String> get monthKeysDesc {
     final keys = _budgets.keys.toList()..sort();
+    return keys.reversed.toList();
+  }
+
+  List<String> get activeMonthKeysDesc {
+    final keys = _budgets.entries
+        .where((e) => !e.value.isCompleted)
+        .map((e) => e.key)
+        .toList()
+      ..sort();
+    return keys.reversed.toList();
+  }
+
+  List<String> get completedMonthKeysDesc {
+    final keys = _budgets.entries
+        .where((e) => e.value.isCompleted)
+        .map((e) => e.key)
+        .toList()
+      ..sort();
     return keys.reversed.toList();
   }
 

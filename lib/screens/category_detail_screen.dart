@@ -13,6 +13,7 @@ class CategoryDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final store = context.watch<BudgetStore>();
     final b = store.currentBudget!;
+    final canEdit = !b.isCompleted;
     final cat = b.categories.firstWhere((c) => c.id == categoryId);
     final isUncategorized = cat.name.trim().toLowerCase() == 'uncategorized';
 
@@ -33,19 +34,39 @@ class CategoryDetailScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: Text('${cat.name} ${cat.emoji}')),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: FloatingActionButton(
-        tooltip: 'Add expense',
-        onPressed: () async {
-          await showDialog(
-            context: context,
-            builder: (_) => AddExpenseDialog(categoryId: categoryId),
-          );
-        },
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: canEdit
+          ? FloatingActionButton(
+              tooltip: 'Add expense',
+              onPressed: () async {
+                await showDialog(
+                  context: context,
+                  builder: (_) => AddExpenseDialog(categoryId: categoryId),
+                );
+              },
+              child: const Icon(Icons.add),
+            )
+          : null,
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          if (!canEdit) ...[
+            Card(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              child: const Padding(
+                padding: EdgeInsets.all(12.0),
+                child: Row(
+                  children: [
+                    Icon(Icons.lock_outline),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text('This completed month is read-only.'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
           if (!isUncategorized) ...[
             Text('Allocated vs Spent',
                 style: Theme.of(context).textTheme.titleMedium),
@@ -99,6 +120,7 @@ class CategoryDetailScreen extends StatelessWidget {
                   trailing: Text(
                       Format.money(e.amount, symbol: store.currency.symbol)),
                   onTap: () async {
+                    if (!canEdit) return;
                     final store = context.read<BudgetStore>();
                     final messenger = ScaffoldMessenger.of(context);
                     final edited = await showDialog<(String, double, String)?>(
@@ -117,6 +139,7 @@ class CategoryDetailScreen extends StatelessWidget {
                         const SnackBar(content: Text('Expense updated')));
                   },
                   onLongPress: () async {
+                    if (!canEdit) return;
                     final store = context.read<BudgetStore>();
                     final messenger = ScaffoldMessenger.of(context);
                     final action = await showModalBottomSheet<String>(
