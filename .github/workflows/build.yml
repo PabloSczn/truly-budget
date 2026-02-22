@@ -15,6 +15,9 @@ jobs:
         with:
           channel: stable
 
+      - name: Setup Gradle cache
+        uses: gradle/actions/setup-gradle@v4
+
       - name: Read semantic version from pubspec.yaml
         id: ver
         run: |
@@ -27,9 +30,28 @@ jobs:
       # Android
       - name: Build Android AppBundle 🛠️
         run: |
-          flutter build appbundle \
-            --build-name "${{ steps.ver.outputs.semver }}" \
-            --build-number "${{ github.run_number }}"
+          set -euo pipefail
+
+          attempt=1
+          max_attempts=4
+          while [ "$attempt" -le "$max_attempts" ]; do
+            echo "AppBundle build attempt $attempt/$max_attempts"
+            if flutter build appbundle \
+              --build-name "${{ steps.ver.outputs.semver }}" \
+              --build-number "${{ github.run_number }}"; then
+              break
+            fi
+
+            if [ "$attempt" -eq "$max_attempts" ]; then
+              echo "AppBundle build failed after $max_attempts attempts."
+              exit 1
+            fi
+
+            sleep_seconds=$((attempt * 15))
+            echo "Build failed, retrying in ${sleep_seconds}s..."
+            sleep "$sleep_seconds"
+            attempt=$((attempt + 1))
+          done
 
       - name: Upload Android AppBundle ⬆️
         uses: actions/upload-artifact@v4
