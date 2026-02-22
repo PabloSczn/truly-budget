@@ -18,14 +18,18 @@ class CategoryCard extends StatelessWidget {
     final double spent = category.spent;
     final double allocated = category.allocated;
     final double remaining = category.remaining;
+    final bool isUncategorized =
+        category.name.trim().toLowerCase() == 'uncategorized';
 
     // clamp() -> num, so call .toDouble()
     final double ratio =
         allocated > 0 ? (spent / allocated).clamp(0.0, 1.0).toDouble() : 0.0;
 
-    final Color barColor = ratio <= 0.5
-        ? Colors.green
-        : (ratio <= 0.8 ? Colors.orange : Colors.red);
+    final Color barColor = isUncategorized
+        ? Colors.blueGrey
+        : (ratio <= 0.5
+            ? Colors.green
+            : (ratio <= 0.8 ? Colors.orange : Colors.red));
 
     return Card(
       child: InkWell(
@@ -49,7 +53,8 @@ class CategoryCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  Text(Format.money(allocated, symbol: currencySymbol)),
+                  if (!isUncategorized)
+                    Text(Format.money(allocated, symbol: currencySymbol)),
                 ],
               ),
               const SizedBox(height: 10),
@@ -67,8 +72,9 @@ class CategoryCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text('Spent: ${Format.money(spent, symbol: currencySymbol)}'),
-                  Text(
-                      'Left: ${Format.money(remaining.clamp(0, double.infinity), symbol: currencySymbol)}'),
+                  if (!isUncategorized)
+                    Text(
+                        'Left: ${Format.money(remaining.clamp(0, double.infinity), symbol: currencySymbol)}'),
                 ],
               )
             ],

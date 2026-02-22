@@ -61,6 +61,9 @@ class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
     return (amount / totalIncome) * 100.0;
   }
 
+  bool _isUncategorizedName(String name) =>
+      name.trim().toLowerCase() == 'uncategorized';
+
   TextEditingController _ensureController(String id, String initialText) {
     return ctrls.putIfAbsent(
         id, () => TextEditingController(text: initialText));
@@ -149,8 +152,10 @@ class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
     final store = context.watch<BudgetStore>();
     final b = store.currentBudget!;
     _totalIncome = b.totalIncome;
+    final allocCategories =
+        b.categories.where((c) => !_isUncategorizedName(c.name)).toList();
 
-    for (final c in b.categories) {
+    for (final c in allocCategories) {
       _ensureDraftForCategory(c.id, c.allocated);
 
       final initialText = _displayTextFor(c.id);
@@ -158,14 +163,15 @@ class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
       _ensureFocusNode(c.id);
     }
 
-    final draftAllocated = b.categories.fold<double>(
+    final draftAllocated = allocCategories.fold<double>(
       0.0,
       (sum, c) => sum + (draftAmounts[c.id] ?? 0.0),
     );
 
     final draftUnallocated = _totalIncome - draftAllocated;
 
-    final canSave = (_totalIncome > 0) || (b.totalAllocated > 0);
+    final canSave = (_totalIncome > 0) ||
+        allocCategories.any((c) => (draftAmounts[c.id] ?? 0.0) > 0);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Allocate income')),
@@ -237,7 +243,7 @@ class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
                   keyboardDismissBehavior:
                       ScrollViewKeyboardDismissBehavior.onDrag,
                   children: [
-                    for (final c in b.categories)
+                    for (final c in allocCategories)
                       ListTile(
                         title: Text('${c.emoji}  ${c.name}'),
                         trailing: SizedBox(
@@ -279,11 +285,14 @@ class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
                           final (name, emoji) = res;
                           final newCat = store.addCategory(name, emoji);
 
-                          draftAmounts[newCat.id] = 0.0;
+                          if (!_isUncategorizedName(newCat.name)) {
+                            draftAmounts[newCat.id] = 0.0;
 
-                          final text = usePercent ? '0' : _fmtAmount(0.0);
-                          ctrls[newCat.id] = TextEditingController(text: text);
-                          _ensureFocusNode(newCat.id);
+                            final text = usePercent ? '0' : _fmtAmount(0.0);
+                            ctrls[newCat.id] =
+                                TextEditingController(text: text);
+                            _ensureFocusNode(newCat.id);
+                          }
 
                           setState(() {});
                         }
@@ -300,9 +309,17 @@ class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
                     ? null
                     : () {
                         try {
-                          final total = b.categories.fold<double>(
+                          final saveAllocations =
+                              Map<String, double>.from(draftAmounts);
+                          for (final c in b.categories) {
+                            if (_isUncategorizedName(c.name)) {
+                              saveAllocations[c.id] = 0.0;
+                            }
+                          }
+
+                          final total = allocCategories.fold<double>(
                             0.0,
-                            (s, c) => s + (draftAmounts[c.id] ?? 0.0),
+                            (s, c) => s + (saveAllocations[c.id] ?? 0.0),
                           );
 
                           if (total > _totalIncome + 1e-6) {
@@ -311,8 +328,7 @@ class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
                           }
 
                           // Save totals (not incremental)
-                          store.setAllocationsByAmounts(
-                              Map<String, double>.from(draftAmounts));
+                          store.setAllocationsByAmounts(saveAllocations);
 
                           if (!mounted) return;
                           Navigator.of(context).pop();

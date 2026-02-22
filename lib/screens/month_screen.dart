@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/category.dart';
 import '../state/budget_store.dart';
 import '../widgets/currency_selector.dart';
 import '../widgets/category_card.dart';
 import '../widgets/add_category_dialog.dart';
+import '../widgets/expenses/add_expense_quick_dialog.dart';
 import '../utils/format.dart';
 import '../utils/year_month.dart';
 import 'year_overview_screen.dart';
@@ -12,8 +14,60 @@ import 'allocate_income_screen.dart';
 import 'category_detail_screen.dart';
 import '../widgets/app_menu_drawer.dart';
 
-class MonthScreen extends StatelessWidget {
+class MonthScreen extends StatefulWidget {
   const MonthScreen({super.key});
+
+  @override
+  State<MonthScreen> createState() => _MonthScreenState();
+}
+
+class _MonthScreenState extends State<MonthScreen> {
+  Future<void> _showAddCategoryDialog() async {
+    final result = await showDialog<(String, String)?>(
+      context: context,
+      builder: (_) => const AddCategoryDialog(),
+    );
+    if (!mounted || result == null) return;
+    final (name, emoji) = result;
+    context.read<BudgetStore>().addCategory(name, emoji);
+  }
+
+  String _resolveCategoryForExpense(BudgetStore store, String? categoryId) {
+    final b = store.currentBudget!;
+    if (categoryId != null && b.categories.any((c) => c.id == categoryId)) {
+      return categoryId;
+    }
+
+    Category? uncategorized;
+    for (final c in b.categories) {
+      if (c.name.trim().toLowerCase() == 'uncategorized') {
+        uncategorized = c;
+        break;
+      }
+    }
+
+    return (uncategorized ?? store.addCategory('Uncategorized', '🗂️')).id;
+  }
+
+  Future<void> _showAddExpenseDialog() async {
+    final store = context.read<BudgetStore>();
+    final b = store.currentBudget;
+    if (b == null) return;
+
+    final result = await showDialog<QuickExpenseInput?>(
+      context: context,
+      builder: (_) => QuickAddExpenseDialog(categories: b.categories),
+    );
+    if (!mounted || result == null) return;
+
+    final categoryId = _resolveCategoryForExpense(store, result.categoryId);
+    store.addExpense(
+      categoryId,
+      result.note,
+      result.amount,
+      emoji: result.emoji,
+    );
+  }
 
   Color _statusColor(double income, double expenses) {
     if (income == 0 && expenses == 0) return Colors.blueGrey.shade200;
@@ -34,7 +88,11 @@ class MonthScreen extends StatelessWidget {
     final overallDebt = (totalExpenses - b.totalIncome) > 0
         ? (totalExpenses - b.totalIncome)
         : 0.0;
-    final overCats = b.categories.where((c) => c.spent > c.allocated).toList();
+    final overCats = b.categories
+        .where((c) =>
+            c.name.trim().toLowerCase() != 'uncategorized' &&
+            c.spent > c.allocated)
+        .toList();
     final statusColor = _statusColor(b.totalIncome, totalExpenses);
     final ratio = b.totalIncome <= 0
         ? 1.0
@@ -47,6 +105,11 @@ class MonthScreen extends StatelessWidget {
         actions: const [CurrencySelectorAction()],
       ),
       drawer: const AppMenuDrawer(),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: _QuickAddFab(
+        onAddExpense: _showAddExpenseDialog,
+        onAddCategory: _showAddCategoryDialog,
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -161,19 +224,6 @@ class MonthScreen extends StatelessWidget {
                 child: const Text('Allocate income'),
               ),
               OutlinedButton(
-                onPressed: () async {
-                  final result = await showDialog<(String, String)?>(
-                    context: context,
-                    builder: (_) => const AddCategoryDialog(),
-                  );
-                  if (result != null) {
-                    final (name, emoji) = result;
-                    store.addCategory(name, emoji);
-                  }
-                },
-                child: const Text('Add expense category'),
-              ),
-              OutlinedButton(
                 onPressed: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
@@ -215,6 +265,122 @@ class MonthScreen extends StatelessWidget {
               )),
           const SizedBox(height: 80),
         ],
+      ),
+    );
+  }
+}
+
+class _QuickAddFab extends StatefulWidget {
+  final Future<void> Function() onAddExpense;
+  final Future<void> Function() onAddCategory;
+
+  const _QuickAddFab({
+    required this.onAddExpense,
+    required this.onAddCategory,
+  });
+
+  @override
+  State<_QuickAddFab> createState() => _QuickAddFabState();
+}
+
+class _QuickAddFabState extends State<_QuickAddFab> {
+  bool _isOpen = false;
+
+  Future<void> _runAction(Future<void> Function() action) async {
+    setState(() => _isOpen = false);
+    await action();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 220,
+      height: 180,
+      child: Stack(
+        alignment: Alignment.bottomRight,
+        clipBehavior: Clip.hardEdge,
+        children: [
+          Positioned(
+            right: 0,
+            bottom: 72,
+            child: IgnorePointer(
+              ignoring: !_isOpen,
+              child: AnimatedSlide(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                offset: _isOpen ? Offset.zero : const Offset(0, 0.12),
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 180),
+                  opacity: _isOpen ? 1 : 0,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      _QuickActionChip(
+                        icon: Icons.category_outlined,
+                        label: 'Add category',
+                        onPressed: () => _runAction(widget.onAddCategory),
+                      ),
+                      const SizedBox(height: 10),
+                      _QuickActionChip(
+                        icon: Icons.receipt_long_outlined,
+                        label: 'Add expense',
+                        onPressed: () => _runAction(widget.onAddExpense),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          FloatingActionButton(
+            heroTag: 'month_quick_add_fab',
+            tooltip: _isOpen ? 'Close quick actions' : 'Open quick actions',
+            onPressed: () => setState(() => _isOpen = !_isOpen),
+            child: AnimatedRotation(
+              turns: _isOpen ? 0.125 : 0,
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              child: const Icon(Icons.add),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickActionChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+
+  const _QuickActionChip({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Material(
+      elevation: 4,
+      color: colors.surface,
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onPressed,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 18, color: colors.primary),
+              const SizedBox(width: 8),
+              Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
       ),
     );
   }
