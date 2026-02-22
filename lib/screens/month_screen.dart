@@ -8,7 +8,6 @@ import '../widgets/add_category_dialog.dart';
 import '../widgets/expenses/add_expense_quick_dialog.dart';
 import '../utils/format.dart';
 import '../utils/year_month.dart';
-import 'year_overview_screen.dart';
 import 'add_income_screen.dart';
 import 'allocate_income_screen.dart';
 import 'category_detail_screen.dart';
@@ -200,40 +199,41 @@ class _MonthScreenState extends State<MonthScreen> {
             ),
           ],
           const SizedBox(height: 6),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              FilledButton(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const AddIncomeScreen()),
-                  );
-                },
-                child: const Text('Add income'),
-              ),
-              FilledButton.tonal(
-                onPressed: !canOpenAllocate
-                    ? null
-                    : () {
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                              builder: (_) => const AllocateIncomeScreen()),
+                            builder: (_) => const AddIncomeScreen(),
+                          ),
                         );
                       },
-                child: const Text('Allocate funds'),
-              ),
-              OutlinedButton(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const YearOverviewScreen(),
+                      child: const Text('Add income'),
                     ),
-                  );
-                },
-                child: const Text('See Year Overview'),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton.tonal(
+                      onPressed: !canOpenAllocate
+                          ? null
+                          : () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const AllocateIncomeScreen(),
+                                ),
+                              );
+                            },
+                      child: const Text('Allocate funds'),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
           const SizedBox(height: 16),
           if (spare > 0)

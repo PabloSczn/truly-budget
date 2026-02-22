@@ -26,30 +26,84 @@ class LandingScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           // Quick actions
-          Row(
-            children: [
-              FilledButton(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const MonthSelectionScreen(),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              color: Theme.of(context)
+                  .colorScheme
+                  .surfaceContainerHighest
+                  .withValues(alpha: 0.45),
+            ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isCompact = constraints.maxWidth < 430;
+
+                final newMonthButton = FilledButton(
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(52),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                  );
-                },
-                child: const Text('New Month'),
-              ),
-              const SizedBox(width: 12),
-              OutlinedButton(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const YearOverviewScreen(),
+                  ),
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const MonthSelectionScreen(),
+                      ),
+                    );
+                  },
+                  child: const _ActionButtonLabel(
+                    icon: Icons.add_circle_outline,
+                    label: 'New Month',
+                  ),
+                );
+
+                final yearOverviewButton = OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(52),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
                     ),
+                    side: BorderSide(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const YearOverviewScreen(),
+                      ),
+                    );
+                  },
+                  child: const _ActionButtonLabel(
+                    icon: Icons.calendar_month_outlined,
+                    label: 'Year Overview',
+                  ),
+                );
+
+                if (isCompact) {
+                  return Column(
+                    children: [
+                      SizedBox(width: double.infinity, child: newMonthButton),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: yearOverviewButton,
+                      ),
+                    ],
                   );
-                },
-                child: const Text('See Year Overview'),
-              ),
-            ],
+                }
+
+                return Row(
+                  children: [
+                    Expanded(child: newMonthButton),
+                    const SizedBox(width: 12),
+                    Expanded(child: yearOverviewButton),
+                  ],
+                );
+              },
+            ),
           ),
           const SizedBox(height: 24),
 
@@ -81,6 +135,36 @@ class LandingScreen extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+class _ActionButtonLabel extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _ActionButtonLabel({
+    required this.icon,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.max,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, size: 20),
+        const SizedBox(width: 8),
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ],
     );
   }
 }
