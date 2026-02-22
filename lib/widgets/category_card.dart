@@ -18,14 +18,18 @@ class CategoryCard extends StatelessWidget {
     final double spent = category.spent;
     final double allocated = category.allocated;
     final double remaining = category.remaining;
+    final bool isUncategorized =
+        category.name.trim().toLowerCase() == 'uncategorized';
 
     // clamp() -> num, so call .toDouble()
     final double ratio =
         allocated > 0 ? (spent / allocated).clamp(0.0, 1.0).toDouble() : 0.0;
 
-    final Color barColor = ratio <= 0.5
-        ? Colors.green
-        : (ratio <= 0.8 ? Colors.orange : Colors.red);
+    final Color barColor = isUncategorized
+        ? Colors.blueGrey
+        : (ratio <= 0.5
+            ? Colors.green
+            : (ratio <= 0.8 ? Colors.orange : Colors.red));
 
     return Card(
       child: InkWell(
