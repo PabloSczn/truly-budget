@@ -31,13 +31,16 @@ class _MonthScreenState extends State<MonthScreen> {
   }
 
   Future<void> _showAddCategoryDialog() async {
-    final result = await showDialog<(String, String)?>(
+    final result = await showDialog<AddCategoryResult>(
       context: context,
-      builder: (_) => const AddCategoryDialog(),
+      builder: (_) => const AddCategoryDialog(showLimitField: true),
     );
     if (!mounted || result == null) return;
-    final (name, emoji) = result;
-    context.read<BudgetStore>().addCategory(name, emoji);
+    context.read<BudgetStore>().addCategory(
+          result.name,
+          result.emoji,
+          allocated: result.allocated,
+        );
   }
 
   String _resolveCategoryForExpense(BudgetStore store, String? categoryId) {

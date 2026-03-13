@@ -319,13 +319,15 @@ class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
                     const SizedBox(height: 8),
                     OutlinedButton.icon(
                       onPressed: () async {
-                        final res = await showDialog<(String, String)?>(
+                        final res = await showDialog<AddCategoryResult>(
                           context: context,
                           builder: (_) => const AddCategoryDialog(),
                         );
                         if (res != null) {
-                          final (name, emoji) = res;
-                          final newCat = store.addCategory(name, emoji);
+                          final newCat = store.addCategory(
+                            res.name,
+                            res.emoji,
+                          );
 
                           if (!_isUncategorizedName(newCat.name)) {
                             draftAmounts[newCat.id] = 0.0;

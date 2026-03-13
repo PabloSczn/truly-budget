@@ -137,7 +137,7 @@ class _DeleteCategoryDialogState extends State<DeleteCategoryDialog> {
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
-        FilledButton.tonal(
+        FilledButton(
           onPressed: () {
             if (_hasExpenses &&
                 _action == DeleteCategoryExpenseAction.moveExpenses &&
@@ -156,9 +156,7 @@ class _DeleteCategoryDialogState extends State<DeleteCategoryDialog> {
               ),
             );
           },
-          style: FilledButton.styleFrom(
-            foregroundColor: Theme.of(context).colorScheme.error,
-          ),
+          style: FilledButton.styleFrom(backgroundColor: Colors.red),
           child: const Text('Delete category'),
         ),
       ],

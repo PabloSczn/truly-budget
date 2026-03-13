@@ -312,14 +312,22 @@ class BudgetStore extends ChangeNotifier {
   }
 
   // Categories
-  Category addCategory(String name, String emoji) {
-    _assertEditable(currentBudget!);
+  Category addCategory(String name, String emoji, {double allocated = 0.0}) {
+    final budget = currentBudget!;
+    _assertEditable(budget);
+    if (allocated.isNaN || allocated.isInfinite || allocated < 0) {
+      throw Exception('Category limit must be zero or more.');
+    }
+    if (budget.totalAllocated + allocated > budget.totalIncome + 1e-6) {
+      throw Exception('Total allocations exceed total income.');
+    }
     final cat = Category(
       id: _rid(),
       name: name.trim(),
       emoji: emoji.trim().isEmpty ? '🗂️' : emoji.trim(),
+      allocated: allocated,
     );
-    currentBudget!.categories.add(cat);
+    budget.categories.add(cat);
     _scheduleSave();
     notifyListeners();
     return cat;
