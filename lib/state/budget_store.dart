@@ -312,17 +312,94 @@ class BudgetStore extends ChangeNotifier {
   }
 
   // Categories
-  Category addCategory(String name, String emoji) {
-    _assertEditable(currentBudget!);
+  Category addCategory(String name, String emoji, {double allocated = 0.0}) {
+    final budget = currentBudget!;
+    _assertEditable(budget);
+    if (allocated.isNaN || allocated.isInfinite || allocated < 0) {
+      throw Exception('Category limit must be zero or more.');
+    }
+    if (budget.totalAllocated + allocated > budget.totalIncome + 1e-6) {
+      throw Exception('Total allocations exceed total income.');
+    }
     final cat = Category(
       id: _rid(),
       name: name.trim(),
       emoji: emoji.trim().isEmpty ? '🗂️' : emoji.trim(),
+      allocated: allocated,
     );
-    currentBudget!.categories.add(cat);
+    budget.categories.add(cat);
     _scheduleSave();
     notifyListeners();
     return cat;
+  }
+
+  void updateCategory(
+    String categoryId, {
+    String? name,
+    String? emoji,
+    double? allocated,
+  }) {
+    final b = currentBudget!;
+    _assertEditable(b);
+    final cat = b.categories.firstWhere((c) => c.id == categoryId);
+
+    final nextName = (name ?? cat.name).trim();
+    final nextEmoji = (emoji ?? cat.emoji).trim();
+    final nextAllocated = allocated ?? cat.allocated;
+
+    if (nextName.isEmpty) {
+      throw Exception('Category name cannot be empty.');
+    }
+    if (nextAllocated.isNaN || nextAllocated.isInfinite || nextAllocated < 0) {
+      throw Exception('Category limit must be zero or more.');
+    }
+
+    final projectedTotalAllocated = b.categories.fold<double>(
+      0.0,
+      (sum, current) =>
+          sum + (current.id == categoryId ? nextAllocated : current.allocated),
+    );
+    if (projectedTotalAllocated > b.totalIncome + 1e-6) {
+      throw Exception('Total allocations exceed total income.');
+    }
+
+    cat.name = nextName;
+    cat.emoji = nextEmoji.isEmpty ? '🗂️' : nextEmoji;
+    cat.allocated = nextAllocated;
+
+    _scheduleSave();
+    notifyListeners();
+  }
+
+  void removeCategory(
+    String categoryId, {
+    String? moveExpensesToCategoryId,
+    bool deleteExpenses = false,
+  }) {
+    final b = currentBudget!;
+    _assertEditable(b);
+    final categoryIndex = b.categories.indexWhere((c) => c.id == categoryId);
+    if (categoryIndex < 0) return;
+
+    final category = b.categories[categoryIndex];
+    if (category.expenses.isNotEmpty && !deleteExpenses) {
+      if (moveExpensesToCategoryId == null ||
+          moveExpensesToCategoryId == categoryId) {
+        throw Exception('Choose another category for these expenses.');
+      }
+
+      final targetIndex =
+          b.categories.indexWhere((c) => c.id == moveExpensesToCategoryId);
+      if (targetIndex < 0) {
+        throw Exception('Target category not found.');
+      }
+      final target = b.categories[targetIndex];
+      target.expenses.addAll(category.expenses);
+    }
+
+    b.categories.removeAt(categoryIndex);
+    _scheduleSave();
+    notifyListeners();
   }
 
   void allocateByAmounts(Map<String, double> amounts) {

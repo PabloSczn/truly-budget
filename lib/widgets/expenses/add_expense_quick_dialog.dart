@@ -36,11 +36,21 @@ class _QuickAddExpenseDialogState extends State<QuickAddExpenseDialog> {
   final noteCtrl = TextEditingController(text: 'Expense');
   final amountCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  late final FocusNode _noteFocusNode;
   String leadingEmoji = '🧾';
   String? selectedCategoryId;
 
   @override
+  void initState() {
+    super.initState();
+    _noteFocusNode = FocusNode()..addListener(_handleNoteFocusChange);
+  }
+
+  @override
   void dispose() {
+    _noteFocusNode
+      ..removeListener(_handleNoteFocusChange)
+      ..dispose();
     noteCtrl.dispose();
     amountCtrl.dispose();
     super.dispose();
@@ -50,6 +60,23 @@ class _QuickAddExpenseDialogState extends State<QuickAddExpenseDialog> {
     final e = await pickEmoji(context);
     if (e == null || e.isEmpty) return;
     setState(() => leadingEmoji = e);
+  }
+
+  void _selectNoteText() {
+    noteCtrl.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: noteCtrl.text.length,
+    );
+  }
+
+  void _handleNoteFocusChange() {
+    if (!_noteFocusNode.hasFocus || noteCtrl.text != 'Expense') return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_noteFocusNode.hasFocus || noteCtrl.text != 'Expense') {
+        return;
+      }
+      _selectNoteText();
+    });
   }
 
   @override
@@ -64,6 +91,12 @@ class _QuickAddExpenseDialogState extends State<QuickAddExpenseDialog> {
           children: [
             TextFormField(
               controller: noteCtrl,
+              focusNode: _noteFocusNode,
+              onTap: () {
+                if (noteCtrl.text == 'Expense') {
+                  _selectNoteText();
+                }
+              },
               decoration: InputDecoration(
                 labelText: 'What for?',
                 prefixIcon:

@@ -1,8 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:truly_budget/widgets/emoji_selector.dart';
 
+import '../state/budget_store.dart';
+import 'money_amount_form_field.dart';
+
+class AddCategoryResult {
+  final String name;
+  final String emoji;
+  final double allocated;
+
+  const AddCategoryResult({
+    required this.name,
+    required this.emoji,
+    this.allocated = 0.0,
+  });
+}
+
 class AddCategoryDialog extends StatefulWidget {
-  const AddCategoryDialog({super.key});
+  final bool showLimitField;
+
+  const AddCategoryDialog({
+    super.key,
+    this.showLimitField = false,
+  });
 
   @override
   State<AddCategoryDialog> createState() => _AddCategoryDialogState();
@@ -10,12 +31,31 @@ class AddCategoryDialog extends StatefulWidget {
 
 class _AddCategoryDialogState extends State<AddCategoryDialog> {
   final nameCtrl = TextEditingController();
+  final limitCtrl = TextEditingController(text: '0.00');
+  late final FocusNode _limitFocusNode;
   String selectedEmoji = '🗂️';
   final _formKey = GlobalKey<FormState>();
 
+  bool _isDisplayedZero(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return false;
+    final value = double.tryParse(trimmed.replaceAll(',', '.'));
+    return value != null && value.abs() < 1e-9;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _limitFocusNode = FocusNode()..addListener(_handleLimitFocusChange);
+  }
+
   @override
   void dispose() {
+    _limitFocusNode
+      ..removeListener(_handleLimitFocusChange)
+      ..dispose();
     nameCtrl.dispose();
+    limitCtrl.dispose();
     super.dispose();
   }
 
@@ -26,43 +66,88 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
     }
   }
 
+  void _handleLimitFocusChange() {
+    if (!_limitFocusNode.hasFocus) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_limitFocusNode.hasFocus) return;
+      if (_isDisplayedZero(limitCtrl.text)) {
+        limitCtrl.clear();
+        return;
+      }
+      limitCtrl.selection = TextSelection(
+        baseOffset: 0,
+        extentOffset: limitCtrl.text.length,
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final currencySymbol = context.watch<BudgetStore>().currency.symbol;
     return AlertDialog(
       title: const Text('Add Category'),
       content: Form(
         key: _formKey,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Leading emoji acts as the selector button
-            InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: _pickEmoji,
-              child: Container(
-                width: 56,
-                height: 56,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                InkWell(
                   borderRadius: BorderRadius.circular(12),
+                  onTap: _pickEmoji,
+                  child: Container(
+                    width: 56,
+                    height: 56,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color:
+                          Theme.of(context).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(selectedEmoji,
+                        style: const TextStyle(fontSize: 28)),
+                  ),
                 ),
-                child:
-                    Text(selectedEmoji, style: const TextStyle(fontSize: 28)),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: TextFormField(
-                controller: nameCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Category name',
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextFormField(
+                    controller: nameCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Category name',
+                    ),
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Please enter a name'
+                        : null,
+                  ),
                 ),
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? 'Please enter a name'
-                    : null,
-              ),
+              ],
             ),
+            if (widget.showLimitField) ...[
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: limitCtrl,
+                focusNode: _limitFocusNode,
+                keyboardType: const TextInputType.numberWithOptions(
+                  signed: false,
+                  decimal: true,
+                ),
+                decoration: moneyAmountInputDecoration(
+                  context,
+                  currencySymbol: currencySymbol,
+                  labelText: 'Category limit',
+                ),
+                validator: (value) {
+                  final amount =
+                      double.tryParse(value?.trim().replaceAll(',', '.') ?? '');
+                  if (amount == null || amount < 0) {
+                    return 'Enter zero or a valid amount';
+                  }
+                  return null;
+                },
+              ),
+            ],
           ],
         ),
       ),
@@ -74,7 +159,16 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
         FilledButton(
           onPressed: () {
             if (_formKey.currentState!.validate()) {
-              Navigator.pop(context, (nameCtrl.text.trim(), selectedEmoji));
+              Navigator.pop(
+                context,
+                AddCategoryResult(
+                  name: nameCtrl.text.trim(),
+                  emoji: selectedEmoji,
+                  allocated: widget.showLimitField
+                      ? double.parse(limitCtrl.text.trim().replaceAll(',', '.'))
+                      : 0.0,
+                ),
+              );
             }
           },
           child: const Text('Add'),
