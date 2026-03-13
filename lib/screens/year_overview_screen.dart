@@ -6,7 +6,7 @@ import 'month_screen.dart';
 import '../utils/format.dart';
 import '../utils/year_month.dart';
 
-enum _YearMonthTileAction { complete, delete, cancel }
+enum _YearMonthTileAction { complete, reopen, delete, cancel }
 
 enum _YearDebtChoice { keepInMonth, carryForward, cancel }
 
@@ -176,6 +176,13 @@ class _YearOverviewScreenState extends State<YearOverviewScreen> {
                 onTap: () =>
                     Navigator.pop(context, _YearMonthTileAction.complete),
               ),
+            if (b.isCompleted)
+              ListTile(
+                leading: const Icon(Icons.lock_open_outlined),
+                title: const Text('Reopen month budget'),
+                onTap: () =>
+                    Navigator.pop(context, _YearMonthTileAction.reopen),
+              ),
             ListTile(
               leading: const Icon(Icons.delete_outline, color: Colors.red),
               title: const Text(
@@ -200,6 +207,14 @@ class _YearOverviewScreenState extends State<YearOverviewScreen> {
 
     if (action == _YearMonthTileAction.complete) {
       await _completeMonthFlow(ymKey);
+      return;
+    }
+
+    if (action == _YearMonthTileAction.reopen) {
+      store.reopenMonth(ymKey);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Month budget reopened.')),
+      );
       return;
     }
 

@@ -72,8 +72,27 @@ class BudgetStore extends ChangeNotifier {
     return debtForBudget(b);
   }
 
+  double totalSpentForBudget(MonthBudget budget) {
+    return budget.categories.fold<double>(0.0, (s, c) => s + c.spent);
+  }
+
+  bool hasCarriedDebt(MonthBudget budget) {
+    return (budget.carriedDebtToKey ?? '').isNotEmpty &&
+        budget.carriedDebtAmount > 0;
+  }
+
+  double effectiveExpenseForBudget(MonthBudget budget) {
+    final rawExpenses = totalSpentForBudget(budget);
+    if (!hasCarriedDebt(budget)) return rawExpenses;
+    return max(0.0, rawExpenses - budget.carriedDebtAmount);
+  }
+
+  double effectiveBalanceForBudget(MonthBudget budget) {
+    return budget.totalIncome - effectiveExpenseForBudget(budget);
+  }
+
   double debtForBudget(MonthBudget budget) {
-    final expenses = budget.categories.fold<double>(0.0, (s, c) => s + c.spent);
+    final expenses = totalSpentForBudget(budget);
     final debt = expenses - budget.totalIncome;
     return debt > 0 ? debt : 0.0;
   }
@@ -441,11 +460,7 @@ class BudgetStore extends ChangeNotifier {
   double totalExpenseFor(int year, int month) {
     final b = _budgets[_keyOf(year, month)];
     if (b == null) return 0.0;
-    double total = 0;
-    for (final c in b.categories) {
-      total += c.spent;
-    }
-    return total;
+    return effectiveExpenseForBudget(b);
   }
 
   // List of month keys

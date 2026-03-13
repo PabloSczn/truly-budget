@@ -5,6 +5,8 @@ import '../utils/format.dart';
 import '../widgets/expenses/add_expense_dialog.dart';
 import '../widgets/expenses/edit_expense_dialog.dart';
 
+enum _CategoryBudgetTone { healthy, warning, danger, overBudget }
+
 class CategoryDetailScreen extends StatelessWidget {
   final String categoryId;
   const CategoryDetailScreen({super.key, required this.categoryId});
@@ -20,16 +22,50 @@ class CategoryDetailScreen extends StatelessWidget {
     final spent = cat.spent;
     final allocated = cat.allocated;
     final remaining = cat.remaining;
-    final ratio = allocated > 0 ? (spent / allocated).clamp(0.0, 1.0) : 0.0;
+    final rawRatio = allocated > 0 ? spent / allocated : 0.0;
+    final ratio = rawRatio.clamp(0.0, 1.0);
 
-    final statusColor = ratio <= 0.5
-        ? Colors.green
-        : (ratio <= 0.8 ? Colors.orange : Colors.red);
-    final statusText = ratio <= 0.5
-        ? 'Great! Less than 50% spent.'
-        : (ratio <= 0.8
-            ? 'Heads up: 51–80% spent.'
-            : 'Warning: 81–100% spent.');
+    final (_CategoryBudgetTone tone, String statusTitle, String statusBody) =
+        rawRatio > 1.0
+            ? (
+                _CategoryBudgetTone.overBudget,
+                'Over budget',
+                'You have spent more than this category was allocated.',
+              )
+            : rawRatio <= 0.5
+                ? (
+                    _CategoryBudgetTone.healthy,
+                    'On track',
+                    'Less than 50% of this category has been spent.',
+                  )
+                : rawRatio <= 0.8
+                    ? (
+                        _CategoryBudgetTone.warning,
+                        'Keep an eye on it',
+                        'Between 51% and 80% of this category is already used.',
+                      )
+                    : (
+                        _CategoryBudgetTone.danger,
+                        'Close to the limit',
+                        'More than 80% of this category has been spent.',
+                      );
+
+    final statusColor = switch (tone) {
+      _CategoryBudgetTone.healthy => Colors.green,
+      _CategoryBudgetTone.warning => Colors.orange,
+      _CategoryBudgetTone.danger => Colors.red,
+      _CategoryBudgetTone.overBudget => Colors.deepOrange,
+    };
+    final statusIcon = switch (tone) {
+      _CategoryBudgetTone.healthy => Icons.check_circle_outline,
+      _CategoryBudgetTone.warning => Icons.pie_chart_outline,
+      _CategoryBudgetTone.danger => Icons.error_outline,
+      _CategoryBudgetTone.overBudget => Icons.warning_amber_rounded,
+    };
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final statusBackground = Color.alphaBlend(
+        statusColor.withValues(alpha: 0.1), colorScheme.surface);
 
     return Scaffold(
       appBar: AppBar(title: Text('${cat.name} ${cat.emoji}')),
@@ -68,8 +104,7 @@ class CategoryDetailScreen extends StatelessWidget {
             const SizedBox(height: 10),
           ],
           if (!isUncategorized) ...[
-            Text('Allocated vs Spent',
-                style: Theme.of(context).textTheme.titleMedium),
+            Text('Allocated vs Spent', style: theme.textTheme.titleMedium),
             const SizedBox(height: 8),
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
@@ -91,12 +126,52 @@ class CategoryDetailScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            Card(
-              color: statusColor.withValues(alpha: 0.1),
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Text(statusText,
-                    style: TextStyle(color: statusColor.shade700)),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                color: statusBackground,
+                border: Border.all(
+                  color: statusColor.withValues(alpha: 0.18),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(statusIcon, color: statusColor, size: 18),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          statusTitle,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onSurface,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          statusBody,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            height: 1.25,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
             if (remaining <= 0)
@@ -107,7 +182,7 @@ class CategoryDetailScreen extends StatelessWidget {
               ),
           ],
           const SizedBox(height: 16),
-          Text('Expenses', style: Theme.of(context).textTheme.titleMedium),
+          Text('Expenses', style: theme.textTheme.titleMedium),
           const SizedBox(height: 8),
           Expanded(
             child: ListView.builder(

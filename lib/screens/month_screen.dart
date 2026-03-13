@@ -165,26 +165,24 @@ class _MonthScreenState extends State<MonthScreen> {
     final canEdit = !b.isCompleted;
     final ymKey = YearMonth(b.year, b.month).key;
     final ymLabel = YearMonth(b.year, b.month).label;
-    final totalExpenses = b.categories.fold<double>(0.0, (s, c) => s + c.spent);
-    final remainingAfterExpenses = b.totalIncome - totalExpenses;
-    final overallDebt = (totalExpenses - b.totalIncome) > 0
-        ? (totalExpenses - b.totalIncome)
-        : 0.0;
+    final totalExpenses = store.totalSpentForBudget(b);
+    final debtAlreadyCarried = store.hasCarriedDebt(b);
+    final effectiveExpenses = store.effectiveExpenseForBudget(b);
+    final remainingAfterExpenses = store.effectiveBalanceForBudget(b);
+    final overallDebt = store.debtForBudget(b);
     final overCats = b.categories
         .where((c) =>
             c.name.trim().toLowerCase() != 'uncategorized' &&
             c.spent > c.allocated)
         .toList();
-    final statusColor = _statusColor(b.totalIncome, totalExpenses);
+    final statusColor = _statusColor(b.totalIncome, effectiveExpenses);
     final ratio = b.totalIncome <= 0
         ? 1.0
-        : (totalExpenses / b.totalIncome).clamp(0.0, 1.0);
+        : (effectiveExpenses / b.totalIncome).clamp(0.0, 1.0);
     final canOpenAllocate =
         canEdit && ((b.totalIncome > 0) || (b.totalAllocated > 0));
     final nextMonthLabel = YearMonth.labelFromKey(store.nextMonthKeyOf(ymKey));
     final hasNextMonth = store.hasNextMonthCreated(ymKey);
-    final debtAlreadyCarried =
-        (b.carriedDebtToKey ?? '').isNotEmpty && b.carriedDebtAmount > 0;
     final carriedToLabel =
         debtAlreadyCarried ? YearMonth.labelFromKey(b.carriedDebtToKey!) : null;
 
@@ -250,10 +248,37 @@ class _MonthScreenState extends State<MonthScreen> {
                       Text(
                           'Income: ${Format.money(b.totalIncome, symbol: store.currency.symbol)}'),
                       Text(
-                          'Expenses: ${Format.money(totalExpenses, symbol: store.currency.symbol)}'),
+                          'Expenses: ${Format.money(effectiveExpenses, symbol: store.currency.symbol)}'),
                     ],
                   ),
-                  if (overallDebt > 0) ...[
+                  if (debtAlreadyCarried) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.forward_outlined,
+                              color: Colors.orange),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Debt carried to $carriedToLabel: ${Format.money(b.carriedDebtAmount, symbol: store.currency.symbol)}',
+                              style: TextStyle(color: Colors.orange.shade800),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Original spending was ${Format.money(totalExpenses, symbol: store.currency.symbol)}. The carried debt is counted in $carriedToLabel instead of this month.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ] else if (overallDebt > 0) ...[
                     const SizedBox(height: 10),
                     Container(
                       padding: const EdgeInsets.all(10),
@@ -275,28 +300,22 @@ class _MonthScreenState extends State<MonthScreen> {
                         ],
                       ),
                     ),
-                    if (canEdit && debtAlreadyCarried) ...[
+                    if (canEdit) ...[
                       const SizedBox(height: 8),
-                      Text(
-                        'Debt already carried to $carriedToLabel.',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ] else if (canEdit && hasNextMonth) ...[
-                      const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton.icon(
-                          onPressed: _carryDebtForwardFromCurrentMonth,
-                          icon: const Icon(Icons.forward),
-                          label: Text('Carry debt to $nextMonthLabel'),
+                      if (hasNextMonth)
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            onPressed: _carryDebtForwardFromCurrentMonth,
+                            icon: const Icon(Icons.forward),
+                            label: Text('Carry debt to $nextMonthLabel'),
+                          ),
+                        )
+                      else
+                        Text(
+                          'Create $nextMonthLabel to carry this debt forward.',
+                          style: Theme.of(context).textTheme.bodySmall,
                         ),
-                      ),
-                    ] else if (canEdit) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        'Create $nextMonthLabel to carry this debt forward.',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
                     ],
                   ],
                 ],
@@ -377,7 +396,7 @@ class _MonthScreenState extends State<MonthScreen> {
               !store.isTipDismissed(_monthSpareTipId))
             DismissibleTipBanner(
               message:
-                  'You still have ${Format.money(remainingAfterExpenses, symbol: store.currency.symbol)} left this month! If you want to save money, you could create a savings category and record these as an expense so you force yourself to save.',
+                  'You still have ${Format.money(remainingAfterExpenses, symbol: store.currency.symbol)} left this month! If you want to save money, you could create a savings category and record these as an expense to help you save.',
               onClose: () {
                 context.read<BudgetStore>().dismissTip(_monthSpareTipId);
               },
