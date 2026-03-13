@@ -32,11 +32,28 @@ class AddCategoryDialog extends StatefulWidget {
 class _AddCategoryDialogState extends State<AddCategoryDialog> {
   final nameCtrl = TextEditingController();
   final limitCtrl = TextEditingController(text: '0.00');
+  late final FocusNode _limitFocusNode;
   String selectedEmoji = '🗂️';
   final _formKey = GlobalKey<FormState>();
 
+  bool _isDisplayedZero(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return false;
+    final value = double.tryParse(trimmed.replaceAll(',', '.'));
+    return value != null && value.abs() < 1e-9;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _limitFocusNode = FocusNode()..addListener(_handleLimitFocusChange);
+  }
+
   @override
   void dispose() {
+    _limitFocusNode
+      ..removeListener(_handleLimitFocusChange)
+      ..dispose();
     nameCtrl.dispose();
     limitCtrl.dispose();
     super.dispose();
@@ -47,6 +64,21 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
     if (e != null && e.isNotEmpty) {
       setState(() => selectedEmoji = e);
     }
+  }
+
+  void _handleLimitFocusChange() {
+    if (!_limitFocusNode.hasFocus) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_limitFocusNode.hasFocus) return;
+      if (_isDisplayedZero(limitCtrl.text)) {
+        limitCtrl.clear();
+        return;
+      }
+      limitCtrl.selection = TextSelection(
+        baseOffset: 0,
+        extentOffset: limitCtrl.text.length,
+      );
+    });
   }
 
   @override
@@ -96,6 +128,7 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: limitCtrl,
+                focusNode: _limitFocusNode,
                 keyboardType: const TextInputType.numberWithOptions(
                   signed: false,
                   decimal: true,
