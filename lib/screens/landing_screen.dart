@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:truly_budget/screens/month_screen.dart';
 import '../state/budget_store.dart';
 import '../widgets/currency_selector.dart';
 import 'month_selection_screen.dart';
@@ -342,9 +341,6 @@ class LandingScreen extends StatelessWidget {
                   final y = int.parse(parts[0]);
                   final m = int.parse(parts[1]);
                   store.selectMonth(y, m);
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const MonthScreen()),
-                  );
                 },
                 onLongPress: () => _showMonthActions(context, key),
               ),

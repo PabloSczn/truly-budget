@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../state/budget_store.dart';
 import '../widgets/month_overview_tile.dart';
-import 'month_screen.dart';
 import '../utils/format.dart';
 import '../utils/year_month.dart';
 
@@ -324,10 +323,8 @@ class _YearOverviewScreenState extends State<YearOverviewScreen> {
                               final y = int.parse(parts[0]);
                               final m = int.parse(parts[1]);
                               store.selectMonth(y, m);
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                    builder: (_) => const MonthScreen()),
-                              );
+                              Navigator.of(context)
+                                  .popUntil((route) => route.isFirst);
                             },
                             onLongPress: () => _showMonthActions(key),
                           );

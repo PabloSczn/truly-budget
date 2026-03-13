@@ -217,6 +217,13 @@ class BudgetStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  void clearSelectedMonth() {
+    if (selectedYMKey == null) return;
+    selectedYMKey = null;
+    _scheduleSave();
+    notifyListeners();
+  }
+
   bool completeMonth(String ymKey) {
     final b = _budgets[ymKey];
     if (b == null) return false;

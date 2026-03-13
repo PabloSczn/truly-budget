@@ -25,8 +25,6 @@ class MonthOverviewTile extends StatelessWidget {
     final balance = store.effectiveBalanceForBudget(b);
     final statusLabel = b.isCompleted ? 'Completed' : 'Active';
     final debtCarried = store.hasCarriedDebt(b);
-    final carriedToLabel =
-        debtCarried ? YearMonth.labelFromKey(b.carriedDebtToKey!) : null;
     final carriedAmount = b.carriedDebtAmount;
 
     return Card(
@@ -38,8 +36,7 @@ class MonthOverviewTile extends StatelessWidget {
         subtitle: Text(
           '$statusLabel month budget\n'
           'Income: ${Format.money(income, symbol: store.currency.symbol)}\n'
-          'Expenses: ${Format.money(expenses, symbol: store.currency.symbol)}'
-          '${debtCarried ? '\nDebt carried to $carriedToLabel: ${Format.money(carriedAmount, symbol: store.currency.symbol)}' : ''}',
+          'Expenses: ${Format.money(expenses, symbol: store.currency.symbol)}',
         ),
         trailing: Column(
           mainAxisAlignment: MainAxisAlignment.center,

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-InputDecoration moneyAmountInputDecoration(
+InputDecoration symbolPrefixedInputDecoration(
   BuildContext context, {
-  required String currencySymbol,
+  required String symbol,
   String? labelText = 'Amount',
 }) {
   final colorScheme = Theme.of(context).colorScheme;
@@ -13,8 +13,20 @@ InputDecoration moneyAmountInputDecoration(
 
   return InputDecoration(
     labelText: labelText,
-    prefixText: '$currencySymbol ',
+    prefixText: '$symbol ',
     prefixStyle: prefixStyle,
+  );
+}
+
+InputDecoration moneyAmountInputDecoration(
+  BuildContext context, {
+  required String currencySymbol,
+  String? labelText = 'Amount',
+}) {
+  return symbolPrefixedInputDecoration(
+    context,
+    symbol: currencySymbol,
+    labelText: labelText,
   );
 }
 
