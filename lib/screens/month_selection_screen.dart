@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../state/budget_store.dart';
-import 'month_screen.dart';
 
 class MonthSelectionScreen extends StatefulWidget {
   const MonthSelectionScreen({super.key});
@@ -57,10 +56,7 @@ class _MonthSelectionScreenState extends State<MonthSelectionScreen> {
           onPressed: () {
             final store = context.read<BudgetStore>();
             store.selectMonth(year, month);
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (_) => const MonthScreen()),
-              (route) => false,
-            );
+            Navigator.of(context).popUntil((route) => route.isFirst);
           },
           icon: const Icon(Icons.check),
           label: const Text('Open Month Budget'),

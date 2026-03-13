@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../state/budget_store.dart';
 import '../emoji_prefix_button.dart';
 import '../emoji_selector.dart';
+import '../money_amount_form_field.dart';
 
 class AddExpenseDialog extends StatefulWidget {
   final String categoryId;
@@ -33,6 +34,7 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final currencySymbol = context.watch<BudgetStore>().currency.symbol;
     return AlertDialog(
       title: const Text('Add expense'),
       content: Form(
@@ -51,15 +53,9 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
                 (v == null || v.trim().isEmpty) ? 'Please enter a note' : null,
           ),
           const SizedBox(height: 8),
-          TextFormField(
+          MoneyAmountFormField(
             controller: amountCtrl,
-            decoration: const InputDecoration(labelText: 'Amount'),
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            validator: (v) {
-              final d = double.tryParse(v?.replaceAll(',', '.') ?? '');
-              if (d == null || d <= 0) return 'Enter a valid amount';
-              return null;
-            },
+            currencySymbol: currencySymbol,
           ),
         ]),
       ),

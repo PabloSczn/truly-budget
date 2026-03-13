@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../state/budget_store.dart';
 import '../widgets/add_category_dialog.dart';
+import '../widgets/money_amount_form_field.dart';
 import '../utils/format.dart';
 
 class AllocateIncomeScreen extends StatefulWidget {
@@ -173,6 +174,39 @@ class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
     final canSave = (_totalIncome > 0) ||
         allocCategories.any((c) => (draftAmounts[c.id] ?? 0.0) > 0);
 
+    void saveAllocations() {
+      try {
+        final saveAllocations = Map<String, double>.from(draftAmounts);
+        for (final c in b.categories) {
+          if (_isUncategorizedName(c.name)) {
+            saveAllocations[c.id] = 0.0;
+          }
+        }
+
+        final total = allocCategories.fold<double>(
+          0.0,
+          (s, c) => s + (saveAllocations[c.id] ?? 0.0),
+        );
+
+        if (total > _totalIncome + 1e-6) {
+          throw Exception('Total allocations exceed total income.');
+        }
+
+        // Save totals (not incremental)
+        store.setAllocationsByAmounts(saveAllocations);
+
+        if (!mounted) return;
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Allocations updated.')),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
+      }
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('Allocate funds')),
       body: GestureDetector(
@@ -255,9 +289,17 @@ class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
                             ),
-                            decoration: InputDecoration(
-                              labelText: usePercent ? '%' : store.currency.code,
-                            ),
+                            decoration: usePercent
+                                ? symbolPrefixedInputDecoration(
+                                    context,
+                                    symbol: '%',
+                                    labelText: null,
+                                  )
+                                : moneyAmountInputDecoration(
+                                    context,
+                                    currencySymbol: store.currency.symbol,
+                                    labelText: null,
+                                  ),
                             onTap: () {
                               // If the field is already focused, still select all on tap
                               final ctrl = ctrls[c.id]!;
@@ -303,49 +345,16 @@ class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
-              FilledButton(
-                onPressed: !canSave
-                    ? null
-                    : () {
-                        try {
-                          final saveAllocations =
-                              Map<String, double>.from(draftAmounts);
-                          for (final c in b.categories) {
-                            if (_isUncategorizedName(c.name)) {
-                              saveAllocations[c.id] = 0.0;
-                            }
-                          }
-
-                          final total = allocCategories.fold<double>(
-                            0.0,
-                            (s, c) => s + (saveAllocations[c.id] ?? 0.0),
-                          );
-
-                          if (total > _totalIncome + 1e-6) {
-                            throw Exception(
-                                'Total allocations exceed total income.');
-                          }
-
-                          // Save totals (not incremental)
-                          store.setAllocationsByAmounts(saveAllocations);
-
-                          if (!mounted) return;
-                          Navigator.of(context).pop();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('Allocations updated.')),
-                          );
-                        } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(e.toString())),
-                          );
-                        }
-                      },
-                child: const Text('Save allocations'),
-              ),
             ],
           ),
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        minimum: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: FilledButton(
+          onPressed: canSave ? saveAllocations : null,
+          child: const Text('Save allocations'),
         ),
       ),
     );

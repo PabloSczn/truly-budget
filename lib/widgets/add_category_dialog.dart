@@ -57,7 +57,6 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
                 controller: nameCtrl,
                 decoration: const InputDecoration(
                   labelText: 'Category name',
-                  hintText: 'e.g. Groceries',
                 ),
                 validator: (v) => (v == null || v.trim().isEmpty)
                     ? 'Please enter a name'

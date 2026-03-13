@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../state/budget_store.dart';
 import '../widgets/emoji_selector.dart';
-import 'allocate_income_screen.dart';
+import '../widgets/money_amount_form_field.dart';
 
 class AddIncomeScreen extends StatefulWidget {
   const AddIncomeScreen({super.key});
@@ -76,66 +76,57 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
     final store = context.watch<BudgetStore>();
     return Scaffold(
       appBar: AppBar(title: const Text('Add income')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              // Source field with emoji button
-              TextFormField(
-                controller: sourceCtrl,
-                decoration: InputDecoration(
-                  labelText: 'From where?',
-                  // Tightly-sized, click-only emoji button
-                  prefixIcon: _EmojiPrefixButton(
-                    emoji: leadingEmoji,
-                    onTap: _insertEmojiFromPicker,
+      body: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                // Source field with emoji button
+                TextFormField(
+                  controller: sourceCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'From where?',
+                    // Tightly-sized, click-only emoji button
+                    prefixIcon: _EmojiPrefixButton(
+                      emoji: leadingEmoji,
+                      onTap: _insertEmojiFromPicker,
+                    ),
+                    prefixIconConstraints: const BoxConstraints(
+                      minWidth: 44,
+                      minHeight: 44,
+                      maxWidth: 52,
+                    ),
                   ),
-                  prefixIconConstraints: const BoxConstraints(
-                    minWidth: 44,
-                    minHeight: 44,
-                    maxWidth: 52,
-                  ),
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'Please describe the income source'
+                      : null,
                 ),
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? 'Please describe the income source'
-                    : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: amountCtrl,
-                keyboardType: const TextInputType.numberWithOptions(
-                    signed: false, decimal: true),
-                decoration: InputDecoration(
-                  labelText: 'Amount in ${store.currency.code}',
-                  prefixIcon: const Icon(Icons.numbers),
+                const SizedBox(height: 12),
+                MoneyAmountFormField(
+                  controller: amountCtrl,
+                  currencySymbol: store.currency.symbol,
                 ),
-                validator: (v) {
-                  final d = double.tryParse(v?.replaceAll(',', '.') ?? '');
-                  if (d == null || d <= 0) return 'Enter a valid amount';
-                  return null;
-                },
-              ),
-              const Spacer(),
-              FilledButton.icon(
-                onPressed: () {
-                  if (_formKey.currentState!.validate()) {
-                    final amount =
-                        double.parse(amountCtrl.text.replaceAll(',', '.'));
-                    store.addIncome(sourceCtrl.text.trim(), amount);
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(
-                        builder: (_) => const AllocateIncomeScreen(),
-                      ),
-                    );
-                  }
-                },
-                icon: const Icon(Icons.add),
-                label: const Text('Add income & allocate'),
-              ),
-            ],
+              ],
+            ),
           ),
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        minimum: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: FilledButton.icon(
+          onPressed: () {
+            if (_formKey.currentState!.validate()) {
+              final amount = double.parse(amountCtrl.text.replaceAll(',', '.'));
+              store.addIncome(sourceCtrl.text.trim(), amount);
+              Navigator.of(context).pop();
+            }
+          },
+          icon: const Icon(Icons.add),
+          label: const Text('Add income'),
         ),
       ),
     );

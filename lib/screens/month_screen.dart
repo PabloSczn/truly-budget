@@ -24,6 +24,10 @@ class MonthScreen extends StatefulWidget {
 }
 
 class _MonthScreenState extends State<MonthScreen> {
+  void _goHome() {
+    context.read<BudgetStore>().clearSelectedMonth();
+  }
+
   Future<void> _showAddCategoryDialog() async {
     final result = await showDialog<(String, String)?>(
       context: context,
@@ -71,6 +75,84 @@ class _MonthScreenState extends State<MonthScreen> {
     );
   }
 
+  Future<void> _carryDebtForwardFromCurrentMonth() async {
+    final store = context.read<BudgetStore>();
+    final b = store.currentBudget;
+    if (b == null) return;
+    if (b.isCompleted) return;
+
+    final ymKey = YearMonth(b.year, b.month).key;
+    final debt = store.debtForBudget(b);
+    if (debt <= 0) return;
+
+    final nextMonthLabel = YearMonth.labelFromKey(store.nextMonthKeyOf(ymKey));
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Carry debt forward?'),
+        content: Text(
+          'Move ${Format.money(debt, symbol: store.currency.symbol)} to $nextMonthLabel as an expense in Uncategorized.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Carry forward'),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted || confirm != true) return;
+
+    final result = store.carryDebtForwardToNextMonth(ymKey);
+    if (!mounted) return;
+
+    switch (result) {
+      case CarryForwardDebtResult.success:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Debt carried to $nextMonthLabel.')),
+        );
+        break;
+      case CarryForwardDebtResult.nextMonthMissing:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Create $nextMonthLabel first to carry debt forward.',
+            ),
+          ),
+        );
+        break;
+      case CarryForwardDebtResult.nextMonthCompleted:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '$nextMonthLabel is completed. Reopen it before carrying debt.',
+            ),
+          ),
+        );
+        break;
+      case CarryForwardDebtResult.debtAlreadyCarried:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Debt was already carried forward.')),
+        );
+        break;
+      case CarryForwardDebtResult.monthHasNoDebt:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('This month has no debt to carry.')),
+        );
+        break;
+      case CarryForwardDebtResult.monthMissing:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Month not found.')),
+        );
+        break;
+    }
+  }
+
   Color _statusColor(double income, double expenses) {
     if (income == 0 && expenses == 0) return Colors.blueGrey.shade200;
     if (income <= 0 && expenses > 0) return Colors.red;
@@ -83,191 +165,272 @@ class _MonthScreenState extends State<MonthScreen> {
   @override
   Widget build(BuildContext context) {
     final store = context.watch<BudgetStore>();
-    final b = store.currentBudget!;
+    final b = store.currentBudget;
+    if (b == null) {
+      return const SizedBox.shrink();
+    }
+    final canEdit = !b.isCompleted;
+    final ymKey = YearMonth(b.year, b.month).key;
     final ymLabel = YearMonth(b.year, b.month).label;
-    final totalExpenses = b.categories.fold<double>(0.0, (s, c) => s + c.spent);
-    final remainingAfterExpenses = b.totalIncome - totalExpenses;
-    final overallDebt = (totalExpenses - b.totalIncome) > 0
-        ? (totalExpenses - b.totalIncome)
-        : 0.0;
+    final debtAlreadyCarried = store.hasCarriedDebt(b);
+    final effectiveExpenses = store.effectiveExpenseForBudget(b);
+    final remainingAfterExpenses = store.effectiveBalanceForBudget(b);
+    final overallDebt = store.debtForBudget(b);
     final overCats = b.categories
         .where((c) =>
             c.name.trim().toLowerCase() != 'uncategorized' &&
             c.spent > c.allocated)
         .toList();
-    final statusColor = _statusColor(b.totalIncome, totalExpenses);
+    final statusColor = _statusColor(b.totalIncome, effectiveExpenses);
     final ratio = b.totalIncome <= 0
         ? 1.0
-        : (totalExpenses / b.totalIncome).clamp(0.0, 1.0);
-    final canOpenAllocate = (b.totalIncome > 0) || (b.totalAllocated > 0);
+        : (effectiveExpenses / b.totalIncome).clamp(0.0, 1.0);
+    final canOpenAllocate =
+        canEdit && ((b.totalIncome > 0) || (b.totalAllocated > 0));
+    final nextMonthLabel = YearMonth.labelFromKey(store.nextMonthKeyOf(ymKey));
+    final hasNextMonth = store.hasNextMonthCreated(ymKey);
+    final carriedToLabel =
+        debtAlreadyCarried ? YearMonth.labelFromKey(b.carriedDebtToKey!) : null;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(ymLabel),
-        actions: const [CurrencySelectorAction()],
-      ),
-      drawer: const AppMenuDrawer(),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: _QuickAddFab(
-        onAddExpense: _showAddExpenseDialog,
-        onAddCategory: _showAddCategoryDialog,
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // Income vs Expenses summary
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Balance',
-                      style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 8),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: LinearProgressIndicator(
-                      value: ratio,
-                      minHeight: 12,
-                      color: statusColor,
-                      backgroundColor: statusColor.withValues(alpha: 0.15),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _goHome();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(ymLabel),
+          actions: const [CurrencySelectorAction()],
+        ),
+        drawer: const AppMenuDrawer(),
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+        floatingActionButton: canEdit
+            ? _QuickAddFab(
+                onAddExpense: _showAddExpenseDialog,
+                onAddCategory: _showAddCategoryDialog,
+              )
+            : null,
+        body: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            if (!canEdit) ...[
+              Card(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                child: const Padding(
+                  padding: EdgeInsets.all(12.0),
+                  child: Row(
                     children: [
-                      Text(
-                          'Income: ${Format.money(b.totalIncome, symbol: store.currency.symbol)}'),
-                      Text(
-                          'Expenses: ${Format.money(totalExpenses, symbol: store.currency.symbol)}'),
+                      Icon(Icons.lock_outline),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'This month budget is completed. It is now read-only.',
+                        ),
+                      ),
                     ],
                   ),
-                  if (overallDebt > 0) ...[
-                    const SizedBox(height: 10),
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.warning_amber_outlined,
-                              color: Colors.red),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Debt this month: ${Format.money(overallDebt, symbol: store.currency.symbol)}',
-                              style: TextStyle(color: Colors.red.shade700),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ],
+                ),
               ),
-            ),
-          ),
-          if (overCats.isNotEmpty) ...[
-            const SizedBox(height: 8),
+              const SizedBox(height: 8),
+            ],
+            // Income vs Expenses summary
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(12.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Over-budget categories',
+                    Text('Balance',
                         style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: 6),
-                    for (final c in overCats)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4.0),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: LinearProgressIndicator(
+                        value: ratio,
+                        minHeight: 12,
+                        color: statusColor,
+                        backgroundColor: statusColor.withValues(alpha: 0.15),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                            'Income: ${Format.money(b.totalIncome, symbol: store.currency.symbol)}'),
+                        Text(
+                            'Expenses: ${Format.money(effectiveExpenses, symbol: store.currency.symbol)}'),
+                      ],
+                    ),
+                    if (debtAlreadyCarried) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                         child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text('${c.emoji}  ${c.name}'),
-                            Text(
-                              '+ ${Format.money((c.spent - c.allocated), symbol: store.currency.symbol)}',
-                              style: const TextStyle(color: Colors.red),
+                            const Icon(Icons.forward_outlined,
+                                color: Colors.orange),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Debt carried to $carriedToLabel: ${Format.money(b.carriedDebtAmount, symbol: store.currency.symbol)}',
+                                style: TextStyle(color: Colors.orange.shade800),
+                              ),
                             ),
                           ],
                         ),
                       ),
+                      const SizedBox(height: 8),
+                    ] else if (overallDebt > 0) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.warning_amber_outlined,
+                                color: Colors.red),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Debt this month: ${Format.money(overallDebt, symbol: store.currency.symbol)}',
+                                style: TextStyle(color: Colors.red.shade700),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (canEdit) ...[
+                        const SizedBox(height: 8),
+                        if (hasNextMonth)
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              onPressed: _carryDebtForwardFromCurrentMonth,
+                              icon: const Icon(Icons.forward),
+                              label: Text('Carry debt to $nextMonthLabel'),
+                            ),
+                          )
+                        else
+                          Text(
+                            'Create $nextMonthLabel to carry this debt forward.',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                      ],
+                    ],
                   ],
                 ),
               ),
             ),
-          ],
-          const SizedBox(height: 6),
-          Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 460),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const AddIncomeScreen(),
+            if (overCats.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Over-budget categories',
+                          style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: 6),
+                      for (final c in overCats)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text('${c.emoji}  ${c.name}'),
+                              Text(
+                                '+ ${Format.money((c.spent - c.allocated), symbol: store.currency.symbol)}',
+                                style: const TextStyle(color: Colors.red),
+                              ),
+                            ],
                           ),
-                        );
-                      },
-                      child: const Text('Add income'),
-                    ),
+                        ),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton.tonal(
-                      onPressed: !canOpenAllocate
-                          ? null
-                          : () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const AllocateIncomeScreen(),
-                                ),
-                              );
-                            },
-                      child: const Text('Allocate funds'),
+                ),
+              ),
+            ],
+            const SizedBox(height: 6),
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 460),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: !canEdit
+                            ? null
+                            : () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const AddIncomeScreen(),
+                                  ),
+                                );
+                              },
+                        child: const Text('Add income'),
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton.tonal(
+                        onPressed: !canOpenAllocate
+                            ? null
+                            : () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        const AllocateIncomeScreen(),
+                                  ),
+                                );
+                              },
+                        child: const Text('Allocate funds'),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          if (remainingAfterExpenses > 0 &&
-              !store.isTipDismissed(_monthSpareTipId))
-            DismissibleTipBanner(
-              message:
-                  'You still have ${Format.money(remainingAfterExpenses, symbol: store.currency.symbol)} left this month! If you want to save money, you could create a savings category and record these as an expense so you force yourself to save.',
-              onClose: () {
-                context.read<BudgetStore>().dismissTip(_monthSpareTipId);
-              },
-            ),
-          const SizedBox(height: 8),
-          if (b.categories.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 18.0),
-              child: Text(
-                  'Nothing here yet. Add an expense or category to get started.'),
-            ),
-          ...b.categories.map((c) => CategoryCard(
-                category: c,
-                currencySymbol: store.currency.symbol,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => CategoryDetailScreen(categoryId: c.id),
-                    ),
-                  );
+            const SizedBox(height: 16),
+            if (remainingAfterExpenses > 0 &&
+                !store.isTipDismissed(_monthSpareTipId))
+              DismissibleTipBanner(
+                message:
+                    'You still have ${Format.money(remainingAfterExpenses, symbol: store.currency.symbol)} left this month! If you want to save money, you could create a savings category and record these as an expense to help you save.',
+                onClose: () {
+                  context.read<BudgetStore>().dismissTip(_monthSpareTipId);
                 },
-              )),
-          const SizedBox(height: 80),
-        ],
+              ),
+            const SizedBox(height: 8),
+            if (b.categories.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 18.0),
+                child: Text(
+                    'Nothing here yet. Add an expense or category to get started.'),
+              ),
+            ...b.categories.map((c) => CategoryCard(
+                  category: c,
+                  currencySymbol: store.currency.symbol,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => CategoryDetailScreen(categoryId: c.id),
+                      ),
+                    );
+                  },
+                )),
+            const SizedBox(height: 80),
+          ],
+        ),
       ),
     );
   }
