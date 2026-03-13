@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import '../screens/landing_screen.dart';
+import 'package:provider/provider.dart';
 import '../screens/year_overview_screen.dart';
 import '../screens/about_screen.dart';
+import '../state/budget_store.dart';
 
 class AppMenuDrawer extends StatelessWidget {
   const AppMenuDrawer({super.key});
@@ -19,11 +20,11 @@ class AppMenuDrawer extends StatelessWidget {
               leading: const Icon(Icons.home_outlined, size: 22),
               title: const Text('Home'),
               onTap: () {
-                Navigator.of(context).pop(); // close drawer
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (_) => const LandingScreen()),
-                  (route) => false,
-                );
+                final navigator = Navigator.of(context);
+                final store = context.read<BudgetStore>();
+                navigator.pop();
+                store.clearSelectedMonth();
+                navigator.popUntil((route) => route.isFirst);
               },
             ),
             ListTile(
