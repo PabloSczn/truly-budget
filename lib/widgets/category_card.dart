@@ -6,11 +6,13 @@ class CategoryCard extends StatelessWidget {
   final Category category;
   final String currencySymbol;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
   const CategoryCard({
     super.key,
     required this.category,
     required this.currencySymbol,
     this.onTap,
+    this.onLongPress,
   });
 
   @override
@@ -34,6 +36,7 @@ class CategoryCard extends StatelessWidget {
     return Card(
       child: InkWell(
         onTap: onTap,
+        onLongPress: onLongPress,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),

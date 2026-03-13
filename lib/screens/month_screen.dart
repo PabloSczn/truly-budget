@@ -5,6 +5,8 @@ import '../state/budget_store.dart';
 import '../widgets/currency_selector.dart';
 import '../widgets/category_card.dart';
 import '../widgets/add_category_dialog.dart';
+import '../widgets/delete_category_dialog.dart';
+import '../widgets/edit_category_dialog.dart';
 import '../widgets/expenses/add_expense_quick_dialog.dart';
 import '../utils/format.dart';
 import '../utils/year_month.dart';
@@ -73,6 +75,155 @@ class _MonthScreenState extends State<MonthScreen> {
       result.amount,
       emoji: result.emoji,
     );
+  }
+
+  Future<void> _showCategoryActions(Category category) async {
+    final action = await showModalBottomSheet<_CategoryTileAction>(
+      context: context,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.edit_outlined),
+                  title: const Text('Edit'),
+                  subtitle: const Text('Update expense category'),
+                  onTap: () => Navigator.pop(
+                    sheetContext,
+                    _CategoryTileAction.edit,
+                  ),
+                ),
+                ListTile(
+                  leading: Icon(
+                    Icons.delete_outline_rounded,
+                    color: Theme.of(sheetContext).colorScheme.error,
+                  ),
+                  title: Text(
+                    'Delete',
+                    style: TextStyle(
+                      color: Theme.of(sheetContext).colorScheme.error,
+                    ),
+                  ),
+                  subtitle: const Text(
+                      'Move expenses or remove them with the category'),
+                  onTap: () => Navigator.pop(
+                    sheetContext,
+                    _CategoryTileAction.delete,
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.close_rounded),
+                  title: const Text('Cancel'),
+                  onTap: () => Navigator.pop(
+                    sheetContext,
+                    _CategoryTileAction.cancel,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (!mounted || action == null || action == _CategoryTileAction.cancel) {
+      return;
+    }
+
+    switch (action) {
+      case _CategoryTileAction.edit:
+        await _editCategory(category);
+        break;
+      case _CategoryTileAction.delete:
+        await _deleteCategory(category);
+        break;
+      case _CategoryTileAction.cancel:
+        break;
+    }
+  }
+
+  Future<void> _editCategory(Category category) async {
+    final result = await showDialog<EditCategoryResult>(
+      context: context,
+      builder: (_) => EditCategoryDialog(
+        initialName: category.name,
+        initialEmoji: category.emoji,
+        initialAllocated: category.allocated,
+      ),
+    );
+
+    if (!mounted || result == null) return;
+
+    try {
+      context.read<BudgetStore>().updateCategory(
+            category.id,
+            name: result.name,
+            emoji: result.emoji,
+            allocated: result.allocated,
+          );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Category updated.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    }
+  }
+
+  Future<void> _deleteCategory(Category category) async {
+    final store = context.read<BudgetStore>();
+    final otherCategories = store.currentBudget!.categories
+        .where((current) => current.id != category.id)
+        .toList();
+    final expenseCount = category.expenses.length;
+    final deleteResult = await showDialog<DeleteCategoryResult>(
+      context: context,
+      builder: (_) => DeleteCategoryDialog(
+        category: category,
+        otherCategories: otherCategories,
+        currencySymbol: store.currency.symbol,
+      ),
+    );
+
+    if (!mounted || deleteResult == null) return;
+
+    try {
+      store.removeCategory(
+        category.id,
+        moveExpensesToCategoryId: deleteResult.targetCategoryId,
+        deleteExpenses:
+            deleteResult.action == DeleteCategoryExpenseAction.deleteExpenses,
+      );
+      if (!mounted) return;
+
+      final moveTargetName = otherCategories
+          .where((current) => current.id == deleteResult.targetCategoryId)
+          .map((current) => current.name)
+          .fold<String?>(null, (_, name) => name);
+      final message = deleteResult.action ==
+                  DeleteCategoryExpenseAction.moveExpenses &&
+              expenseCount > 0
+          ? 'Category deleted and $expenseCount expense${expenseCount == 1 ? '' : 's'} moved to ${moveTargetName ?? 'the selected category'}.'
+          : 'Category deleted.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    }
   }
 
   Future<void> _carryDebtForwardFromCurrentMonth() async {
@@ -427,6 +578,7 @@ class _MonthScreenState extends State<MonthScreen> {
                       ),
                     );
                   },
+                  onLongPress: canEdit ? () => _showCategoryActions(c) : null,
                 )),
             const SizedBox(height: 80),
           ],
@@ -551,3 +703,5 @@ class _QuickActionChip extends StatelessWidget {
     );
   }
 }
+
+enum _CategoryTileAction { edit, delete, cancel }
