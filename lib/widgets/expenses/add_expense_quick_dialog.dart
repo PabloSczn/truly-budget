@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../emoji_prefix_button.dart';
 import '../emoji_selector.dart';
 import '../../models/category.dart';
+import '../../state/budget_store.dart';
+import '../money_amount_form_field.dart';
 
 class QuickExpenseInput {
   final String note;
@@ -51,6 +54,7 @@ class _QuickAddExpenseDialogState extends State<QuickAddExpenseDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final currencySymbol = context.watch<BudgetStore>().currency.symbol;
     return AlertDialog(
       title: const Text('Add expense'),
       content: Form(
@@ -75,16 +79,9 @@ class _QuickAddExpenseDialogState extends State<QuickAddExpenseDialog> {
                   : null,
             ),
             const SizedBox(height: 8),
-            TextFormField(
+            MoneyAmountFormField(
               controller: amountCtrl,
-              decoration: const InputDecoration(labelText: 'Amount'),
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              validator: (v) {
-                final d = double.tryParse(v?.replaceAll(',', '.') ?? '');
-                if (d == null || d <= 0) return 'Enter a valid amount';
-                return null;
-              },
+              currencySymbol: currencySymbol,
             ),
             const SizedBox(height: 8),
             DropdownButtonFormField<String?>(

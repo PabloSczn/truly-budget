@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../state/budget_store.dart';
 import '../widgets/emoji_selector.dart';
+import '../widgets/money_amount_form_field.dart';
 import 'allocate_income_screen.dart';
 
 class AddIncomeScreen extends StatefulWidget {
@@ -103,19 +104,9 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
                     : null,
               ),
               const SizedBox(height: 12),
-              TextFormField(
+              MoneyAmountFormField(
                 controller: amountCtrl,
-                keyboardType: const TextInputType.numberWithOptions(
-                    signed: false, decimal: true),
-                decoration: InputDecoration(
-                  labelText: 'Amount in ${store.currency.code}',
-                  prefixIcon: const Icon(Icons.numbers),
-                ),
-                validator: (v) {
-                  final d = double.tryParse(v?.replaceAll(',', '.') ?? '');
-                  if (d == null || d <= 0) return 'Enter a valid amount';
-                  return null;
-                },
+                currencySymbol: store.currency.symbol,
               ),
               const Spacer(),
               FilledButton.icon(

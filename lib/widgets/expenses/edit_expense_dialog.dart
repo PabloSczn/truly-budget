@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../state/budget_store.dart';
 import '../emoji_prefix_button.dart';
 import '../emoji_selector.dart';
+import '../money_amount_form_field.dart';
 
 class EditExpenseDialog extends StatefulWidget {
   final String initialNote;
@@ -20,6 +23,7 @@ class EditExpenseDialog extends StatefulWidget {
 class _EditExpenseDialogState extends State<EditExpenseDialog> {
   late final TextEditingController noteCtrl;
   late final TextEditingController amountCtrl;
+  late final FocusNode amountFocusNode;
   final _formKey = GlobalKey<FormState>();
   late String leadingEmoji;
 
@@ -29,6 +33,7 @@ class _EditExpenseDialogState extends State<EditExpenseDialog> {
     noteCtrl = TextEditingController(text: widget.initialNote);
     amountCtrl =
         TextEditingController(text: widget.initialAmount.toStringAsFixed(2));
+    amountFocusNode = FocusNode();
     leadingEmoji = widget.initialEmoji;
   }
 
@@ -36,6 +41,7 @@ class _EditExpenseDialogState extends State<EditExpenseDialog> {
   void dispose() {
     noteCtrl.dispose();
     amountCtrl.dispose();
+    amountFocusNode.dispose();
     super.dispose();
   }
 
@@ -47,6 +53,7 @@ class _EditExpenseDialogState extends State<EditExpenseDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final currencySymbol = context.watch<BudgetStore>().currency.symbol;
     return AlertDialog(
       title: const Text('Edit expense'),
       content: Form(
@@ -65,15 +72,11 @@ class _EditExpenseDialogState extends State<EditExpenseDialog> {
                 (v == null || v.trim().isEmpty) ? 'Please enter a note' : null,
           ),
           const SizedBox(height: 8),
-          TextFormField(
+          MoneyAmountFormField(
             controller: amountCtrl,
-            decoration: const InputDecoration(labelText: 'Amount'),
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            validator: (v) {
-              final d = double.tryParse(v?.replaceAll(',', '.') ?? '');
-              if (d == null || d <= 0) return 'Enter a valid amount';
-              return null;
-            },
+            currencySymbol: currencySymbol,
+            focusNode: amountFocusNode,
+            selectAllOnFocus: true,
           ),
         ]),
       ),

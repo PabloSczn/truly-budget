@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../state/budget_store.dart';
 import '../widgets/add_category_dialog.dart';
+import '../widgets/money_amount_form_field.dart';
 import '../utils/format.dart';
 
 class AllocateIncomeScreen extends StatefulWidget {
@@ -255,9 +256,13 @@ class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
                             ),
-                            decoration: InputDecoration(
-                              labelText: usePercent ? '%' : store.currency.code,
-                            ),
+                            decoration: usePercent
+                                ? const InputDecoration(labelText: '%')
+                                : moneyAmountInputDecoration(
+                                    context,
+                                    currencySymbol: store.currency.symbol,
+                                    labelText: null,
+                                  ),
                             onTap: () {
                               // If the field is already focused, still select all on tap
                               final ctrl = ctrls[c.id]!;
