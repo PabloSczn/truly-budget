@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../state/budget_store.dart';
 import '../widgets/month_overview_tile.dart';
+import '../widgets/app_menu_drawer.dart';
 import '../utils/format.dart';
 import '../utils/year_month.dart';
 
@@ -275,6 +276,7 @@ class _YearOverviewScreenState extends State<YearOverviewScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Year Overview')),
+      drawer: const AppMenuDrawer(),
       body: SafeArea(
         top: false,
         minimum: const EdgeInsets.only(bottom: 12),
