@@ -184,6 +184,8 @@ class BudgetStore extends ChangeNotifier {
     });
   }
 
+  Map<String, dynamic> exportData() => _toJson();
+
   void changeCurrency(Currency c) {
     currency = c;
     _scheduleSave();
@@ -221,6 +223,26 @@ class BudgetStore extends ChangeNotifier {
     if (selectedYMKey == null) return;
     selectedYMKey = null;
     _scheduleSave();
+    notifyListeners();
+  }
+
+  Future<void> resetAllData() async {
+    _saveDebounce?.cancel();
+    _budgets.clear();
+    _dismissedTipIds.clear();
+    selectedYMKey = null;
+    currency = Currencies.list.first;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('currency_code');
+    await prefs.remove('selected_ym');
+
+    if (_dbFile == null) {
+      final dir = await getApplicationDocumentsDirectory();
+      _dbFile = File('${dir.path}/budgets.json');
+    }
+
+    await _save();
     notifyListeners();
   }
 

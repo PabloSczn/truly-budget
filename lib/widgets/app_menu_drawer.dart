@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../screens/data_management_screen.dart';
 import '../screens/year_overview_screen.dart';
 import '../screens/about_screen.dart';
 import '../state/budget_store.dart';
@@ -35,6 +36,18 @@ class AppMenuDrawer extends StatelessWidget {
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => const YearOverviewScreen(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.folder_shared_outlined, size: 22),
+              title: const Text('Data & Exports'),
+              onTap: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const DataManagementScreen(),
                   ),
                 );
               },
