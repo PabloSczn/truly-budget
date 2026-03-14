@@ -245,182 +245,232 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
   @override
   Widget build(BuildContext context) {
     final store = context.watch<BudgetStore>();
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final monthKeys = store.monthKeysDesc;
     final selectedMonthKey = _resolvedMonthKey(store);
     final years = _availableYears(store);
     final selectedYear = _resolvedYear(store);
+    const dangerColor = Colors.red;
+    final dangerBackground = Color.alphaBlend(
+      dangerColor.withValues(alpha: 0.1),
+      colorScheme.surface,
+    );
 
     return Scaffold(
       appBar: AppBar(title: const Text('Data & Exports')),
       drawer: const AppMenuDrawer(),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Card(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Manage your data',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Create shareable exports for a month or a whole year, download a full backup of your raw data, or reset the app completely.',
-                  ),
-                  if (_isBusy) ...[
-                    const SizedBox(height: 16),
-                    const LinearProgressIndicator(),
+      body: SafeArea(
+        top: false,
+        minimum: const EdgeInsets.only(bottom: 12),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+          children: [
+            Card(
+              color: colorScheme.surfaceContainerHighest,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Manage your data',
+                      style: theme.textTheme.titleLarge,
+                    ),
                     const SizedBox(height: 8),
-                    Text(_busyLabel ?? 'Working...'),
+                    const Text(
+                      'Create shareable exports for a month or a whole year, download a full backup of your raw data, or reset the app completely.',
+                    ),
+                    if (_isBusy) ...[
+                      const SizedBox(height: 16),
+                      const LinearProgressIndicator(),
+                      const SizedBox(height: 8),
+                      Text(_busyLabel ?? 'Working...'),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Month budget export',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'PDF and XLSX include the full month budget with income, category balances, and expenses. JPG keeps a compact summary with each category balance and the overall month balance.',
-                  ),
-                  const SizedBox(height: 16),
-                  if (monthKeys.isEmpty)
-                    const Text('Create a month budget to enable this export.')
-                  else ...[
-                    DropdownButtonFormField<String>(
-                      key: ValueKey(selectedMonthKey),
-                      initialValue: selectedMonthKey,
-                      decoration: const InputDecoration(
-                        labelText: 'Month',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: [
-                        for (final key in monthKeys)
-                          DropdownMenuItem(
-                            value: key,
-                            child: Text(YearMonth.labelFromKey(key)),
-                          ),
-                      ],
-                      onChanged: _isBusy
-                          ? null
-                          : (value) =>
-                              setState(() => _selectedMonthKey = value),
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Month budget export',
+                      style: theme.textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'PDF and XLSX include the full month budget with income, category balances, and expenses. JPG keeps a compact summary with each category balance and the overall month balance.',
                     ),
                     const SizedBox(height: 16),
-                    _ExportButtons(
-                      enabled: !_isBusy,
-                      onPressed: _exportMonth,
-                    ),
+                    if (monthKeys.isEmpty)
+                      const Text('Create a month budget to enable this export.')
+                    else ...[
+                      DropdownButtonFormField<String>(
+                        key: ValueKey(selectedMonthKey),
+                        initialValue: selectedMonthKey,
+                        decoration: const InputDecoration(
+                          labelText: 'Month',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: [
+                          for (final key in monthKeys)
+                            DropdownMenuItem(
+                              value: key,
+                              child: Text(YearMonth.labelFromKey(key)),
+                            ),
+                        ],
+                        onChanged: _isBusy
+                            ? null
+                            : (value) =>
+                                setState(() => _selectedMonthKey = value),
+                      ),
+                      const SizedBox(height: 16),
+                      _ExportButtons(
+                        enabled: !_isBusy,
+                        onPressed: _exportMonth,
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Year balance export',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'PDF and XLSX include a year summary with every month. JPG keeps only the balance of each month and the overall year balance.',
-                  ),
-                  const SizedBox(height: 16),
-                  if (years.isEmpty)
-                    const Text('Create a budget first to enable year exports.')
-                  else ...[
-                    DropdownButtonFormField<int>(
-                      key: ValueKey(selectedYear),
-                      initialValue: selectedYear,
-                      decoration: const InputDecoration(
-                        labelText: 'Year',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: [
-                        for (final year in years)
-                          DropdownMenuItem(
-                            value: year,
-                            child: Text(year.toString()),
-                          ),
-                      ],
-                      onChanged: _isBusy
-                          ? null
-                          : (value) => setState(() => _selectedYear = value),
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Year balance export',
+                      style: theme.textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'PDF and XLSX include a year summary with every month. JPG keeps only the balance of each month and the overall year balance.',
                     ),
                     const SizedBox(height: 16),
-                    _ExportButtons(
-                      enabled: !_isBusy,
-                      onPressed: _exportYear,
+                    if (years.isEmpty)
+                      const Text(
+                          'Create a budget first to enable year exports.')
+                    else ...[
+                      DropdownButtonFormField<int>(
+                        key: ValueKey(selectedYear),
+                        initialValue: selectedYear,
+                        decoration: const InputDecoration(
+                          labelText: 'Year',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: [
+                          for (final year in years)
+                            DropdownMenuItem(
+                              value: year,
+                              child: Text(year.toString()),
+                            ),
+                        ],
+                        onChanged: _isBusy
+                            ? null
+                            : (value) => setState(() => _selectedYear = value),
+                      ),
+                      const SizedBox(height: 16),
+                      _ExportButtons(
+                        enabled: !_isBusy,
+                        onPressed: _exportYear,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Full app backup',
+                      style: theme.textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Creates a ZIP file with the raw JSON backup of everything stored in the app so you can save it to Drive or another service.',
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      onPressed: _isBusy ? null : _exportBackup,
+                      icon: const Icon(Icons.archive_outlined),
+                      label: const Text('Create ZIP backup'),
                     ),
                   ],
-                ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Card(
-            child: Padding(
+            const SizedBox(height: 16),
+            Container(
               padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                color: dangerBackground,
+                border: Border.all(
+                  color: dangerColor.withValues(alpha: 0.18),
+                ),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Full app backup',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Creates a ZIP file with the raw JSON backup of everything stored in the app so you can save it to Drive or another service.',
-                  ),
-                  const SizedBox(height: 16),
-                  FilledButton.icon(
-                    onPressed: _isBusy ? null : _exportBackup,
-                    icon: const Icon(Icons.archive_outlined),
-                    label: const Text('Create ZIP backup'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Card(
-            color: Colors.red.withValues(alpha: 0.05),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Reset app data',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'This removes every month budget, income entry, category, expense, and saved preference so the app goes back to a clean start.',
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: dangerColor.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.warning_amber_rounded,
+                          color: dangerColor,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Reset app data',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: colorScheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'This removes every month budget, income entry, category, expense, and saved preference so the app goes back to a clean start.',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                                height: 1.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   FilledButton.icon(
                     style: FilledButton.styleFrom(
-                      backgroundColor: Colors.red,
+                      backgroundColor: dangerColor,
+                      foregroundColor: Colors.white,
                     ),
                     onPressed: _isBusy ? null : _resetAllData,
                     icon: const Icon(Icons.delete_forever_outlined),
@@ -429,8 +479,8 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
                 ],
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
