@@ -239,7 +239,12 @@ class LandingScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('TrulyBudget'),
+        title: Image.asset(
+          'assets/only_text.png',
+          height: 34,
+          fit: BoxFit.contain,
+          semanticLabel: 'TrulyBudget',
+        ),
         actions: const [CurrencySelectorAction()],
       ),
       drawer: const AppMenuDrawer(),

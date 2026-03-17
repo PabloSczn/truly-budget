@@ -1,6 +1,6 @@
 {
-    "name": "trulybudget",
-    "short_name": "trulybudget",
+    "name": "TrulyBudget",
+    "short_name": "TrulyBudget",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

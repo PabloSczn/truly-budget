@@ -26,3 +26,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/icon/app_icon.png
+    - assets/logo_with_text_below.png
+    - assets/only_text.png

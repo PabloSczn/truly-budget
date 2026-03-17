@@ -14,8 +14,15 @@ class AppMenuDrawer extends StatelessWidget {
       child: SafeArea(
         child: ListView(
           children: [
-            const DrawerHeader(
-              child: Text('TrulyBudget', style: TextStyle(fontSize: 24)),
+            DrawerHeader(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Image.asset(
+                  'assets/logo_with_text_below.png',
+                  fit: BoxFit.contain,
+                  semanticLabel: 'TrulyBudget',
+                ),
+              ),
             ),
             ListTile(
               leading: const Icon(Icons.home_outlined, size: 22),
