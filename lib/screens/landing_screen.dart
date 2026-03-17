@@ -241,7 +241,7 @@ class LandingScreen extends StatelessWidget {
       appBar: AppBar(
         title: Image.asset(
           'assets/only_text.png',
-          height: 34,
+          height: 30.5,
           fit: BoxFit.contain,
           semanticLabel: 'TrulyBudget',
         ),
