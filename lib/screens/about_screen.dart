@@ -17,7 +17,10 @@ class _AboutScreenState extends State<AboutScreen> {
     super.initState();
     () async {
       final info = await PackageInfo.fromPlatform();
-      setState(() => _version = '${info.version}+${info.buildNumber}');
+      final versionLabel = info.buildNumber.isEmpty
+          ? info.version
+          : '${info.version} (${info.buildNumber})';
+      setState(() => _version = versionLabel);
     }();
   }
 
@@ -35,8 +38,14 @@ class _AboutScreenState extends State<AboutScreen> {
           const SizedBox(height: 24),
           const Text('Contact'),
           ListTile(
+            contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.email_outlined),
-            title: const Text('sancheznarro.pablo@gmail.com'),
+            title: const Text('Email'),
+            subtitle: const Text(
+              'sancheznarro.pablo@gmail.com',
+              softWrap: true,
+            ),
+            isThreeLine: true,
             onTap: () async {
               final uri = Uri(
                 scheme: 'mailto',
@@ -47,6 +56,11 @@ class _AboutScreenState extends State<AboutScreen> {
                 await launchUrl(uri);
               }
             },
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'TrulyBudget is a solo project.\nI am always open to feedback and quick to fix any errors. Don\'t hesitate to reach out!',
+            style: Theme.of(context).textTheme.bodyMedium,
           ),
         ],
       ),
