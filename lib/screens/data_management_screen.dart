@@ -167,61 +167,11 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
   }
 
   Future<bool> _confirmReset(BudgetStore store) async {
-    final controller = TextEditingController();
     final monthCount = store.budgets.length;
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) {
-        var canDelete = false;
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('Reset all app data?'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'This will permanently remove $monthCount month budget${monthCount == 1 ? '' : 's'}, your currency selection, and dismissed tips.',
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Type RESET to confirm.',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: controller,
-                    autofocus: true,
-                    onChanged: (value) {
-                      setDialogState(() => canDelete = value.trim() == 'RESET');
-                    },
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      hintText: 'RESET',
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext, false),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  style: FilledButton.styleFrom(backgroundColor: Colors.red),
-                  onPressed: canDelete
-                      ? () => Navigator.pop(dialogContext, true)
-                      : null,
-                  child: const Text('Delete everything'),
-                ),
-              ],
-            );
-          },
-        );
-      },
+      builder: (_) => _ResetConfirmationDialog(monthCount: monthCount),
     );
-    controller.dispose();
     return confirm ?? false;
   }
 
@@ -422,61 +372,96 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
                   color: dangerColor.withValues(alpha: 0.18),
                 ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isCompact = constraints.maxWidth < 560;
+                  final resetButtonStyle = FilledButton.styleFrom(
+                    backgroundColor: dangerColor,
+                    foregroundColor: Colors.white,
+                  );
+
+                  Widget buildResetButton({required bool expand}) {
+                    final button = FilledButton.icon(
+                      style: resetButtonStyle,
+                      onPressed: _isBusy ? null : _resetAllData,
+                      icon: const Icon(Icons.delete_forever_outlined),
+                      label: const Text('Delete all app data'),
+                    );
+                    if (!expand) return button;
+                    return SizedBox(width: double.infinity, child: button);
+                  }
+
+                  final warningBadge = Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: dangerColor.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.warning_amber_rounded,
+                      color: dangerColor,
+                      size: 22,
+                    ),
+                  );
+
+                  final warningText = Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: dangerColor.withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.warning_amber_rounded,
-                          color: dangerColor,
-                          size: 22,
+                      Text(
+                        'Reset app data',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: colorScheme.onSurface,
                         ),
                       ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'This removes every month budget, income entry, category, expense, and saved preference so the app goes back to a clean start.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  );
+
+                  if (isCompact) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            warningBadge,
+                            const SizedBox(width: 12),
+                            Expanded(child: warningText),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        buildResetButton(expand: true),
+                      ],
+                    );
+                  }
+
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      warningBadge,
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Reset app data',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
-                                color: colorScheme.onSurface,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'This removes every month budget, income entry, category, expense, and saved preference so the app goes back to a clean start.',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: colorScheme.onSurfaceVariant,
-                                height: 1.3,
-                              ),
-                            ),
+                            warningText,
+                            const SizedBox(height: 16),
+                            buildResetButton(expand: false),
                           ],
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 16),
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: dangerColor,
-                      foregroundColor: Colors.white,
-                    ),
-                    onPressed: _isBusy ? null : _resetAllData,
-                    icon: const Icon(Icons.delete_forever_outlined),
-                    label: const Text('Delete all app data'),
-                  ),
-                ],
+                  );
+                },
               ),
             ),
           ],
@@ -507,6 +492,94 @@ class _ExportButtons extends StatelessWidget {
             icon: Icon(format.icon),
             label: Text(format.label),
           ),
+      ],
+    );
+  }
+}
+
+class _ResetConfirmationDialog extends StatefulWidget {
+  final int monthCount;
+
+  const _ResetConfirmationDialog({required this.monthCount});
+
+  @override
+  State<_ResetConfirmationDialog> createState() =>
+      _ResetConfirmationDialogState();
+}
+
+class _ResetConfirmationDialogState extends State<_ResetConfirmationDialog> {
+  final TextEditingController _controller = TextEditingController();
+  bool _canDelete = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(_handleTextChanged);
+  }
+
+  void _handleTextChanged() {
+    final canDelete = _controller.text.trim() == 'RESET';
+    if (canDelete == _canDelete) return;
+    setState(() => _canDelete = canDelete);
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_handleTextChanged);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _close(bool confirmed) {
+    Navigator.of(context).pop(confirmed);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final monthCount = widget.monthCount;
+
+    return AlertDialog(
+      scrollable: true,
+      title: const Text('Reset all app data?'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'This will permanently remove $monthCount month budget${monthCount == 1 ? '' : 's'}, your currency selection, and dismissed tips.',
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Type RESET to confirm.',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _controller,
+            autofocus: true,
+            textCapitalization: TextCapitalization.characters,
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) {
+              if (_canDelete) _close(true);
+            },
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              hintText: 'RESET',
+              isDense: true,
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => _close(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: Colors.red),
+          onPressed: _canDelete ? () => _close(true) : null,
+          child: const Text('Delete everything'),
+        ),
       ],
     );
   }
