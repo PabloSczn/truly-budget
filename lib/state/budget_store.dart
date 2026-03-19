@@ -29,6 +29,7 @@ class BudgetStore extends ChangeNotifier {
   final Set<String> _dismissedTipIds = <String>{};
   String? selectedYMKey;
   Currency currency = const Currency('GBP', '£');
+  ThemeMode themeMode = ThemeMode.system;
   bool initialized = false;
 
   // File persistence
@@ -40,6 +41,18 @@ class BudgetStore extends ChangeNotifier {
 
   MonthBudget? get currentBudget =>
       selectedYMKey == null ? null : _budgets[selectedYMKey];
+
+  ThemeMode _themeModeFromName(String? name) {
+    switch (name) {
+      case 'light':
+        return ThemeMode.light;
+      case 'dark':
+        return ThemeMode.dark;
+      case 'system':
+      default:
+        return ThemeMode.system;
+    }
+  }
 
   String _keyOf(int year, int month) =>
       '$year-${month.toString().padLeft(2, '0')}';
@@ -133,6 +146,7 @@ class BudgetStore extends ChangeNotifier {
         });
         final code = data['currency_code'] as String?;
         if (code != null) currency = Currencies.byCode(code);
+        themeMode = _themeModeFromName(data['theme_mode'] as String?);
         selectedYMKey = data['selected_ym'] as String?;
         _dismissedTipIds
           ..clear()
@@ -147,8 +161,12 @@ class BudgetStore extends ChangeNotifier {
       // Fallback to previous prefs
       final prefs = await SharedPreferences.getInstance();
       final code = prefs.getString('currency_code');
+      final savedThemeMode = prefs.getString('theme_mode');
       final ym = prefs.getString('selected_ym');
       if (code != null) currency = Currencies.byCode(code);
+      if (savedThemeMode != null) {
+        themeMode = _themeModeFromName(savedThemeMode);
+      }
       selectedYMKey = ym;
       await _save();
     }
@@ -159,6 +177,7 @@ class BudgetStore extends ChangeNotifier {
 
   Map<String, dynamic> _toJson() => {
         'currency_code': currency.code,
+        'theme_mode': themeMode.name,
         'selected_ym': selectedYMKey,
         'dismissed_tips': _dismissedTipIds.toList()..sort(),
         'budgets': _budgets.map(
@@ -188,6 +207,13 @@ class BudgetStore extends ChangeNotifier {
 
   void changeCurrency(Currency c) {
     currency = c;
+    _scheduleSave();
+    notifyListeners();
+  }
+
+  void changeThemeMode(ThemeMode mode) {
+    if (themeMode == mode) return;
+    themeMode = mode;
     _scheduleSave();
     notifyListeners();
   }
@@ -232,9 +258,11 @@ class BudgetStore extends ChangeNotifier {
     _dismissedTipIds.clear();
     selectedYMKey = null;
     currency = Currencies.list.first;
+    themeMode = ThemeMode.system;
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('currency_code');
+    await prefs.remove('theme_mode');
     await prefs.remove('selected_ym');
 
     if (_dbFile == null) {

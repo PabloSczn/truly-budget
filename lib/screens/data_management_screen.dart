@@ -546,7 +546,7 @@ class _ResetConfirmationDialogState extends State<_ResetConfirmationDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'This will permanently remove $monthCount month budget${monthCount == 1 ? '' : 's'}, your currency selection and all your data',
+            'This will permanently remove $monthCount month budget${monthCount == 1 ? '' : 's'}, your currency and theme selections, and all your data',
           ),
           const SizedBox(height: 16),
           const Text(

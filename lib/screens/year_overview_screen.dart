@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../state/budget_store.dart';
+import '../widgets/currency_selector.dart';
 import '../widgets/month_overview_tile.dart';
 import '../widgets/app_menu_drawer.dart';
+import '../widgets/theme_mode_selector.dart';
 import '../utils/format.dart';
 import '../utils/year_month.dart';
 
@@ -275,7 +277,13 @@ class _YearOverviewScreenState extends State<YearOverviewScreen> {
     final statusColor = _statusColor(totalIncome, totalExpenses);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Year Overview')),
+      appBar: AppBar(
+        title: const Text('Year Overview'),
+        actions: const [
+          ThemeModeSelectorAction(),
+          CurrencySelectorAction(),
+        ],
+      ),
       drawer: const AppMenuDrawer(),
       body: SafeArea(
         top: false,

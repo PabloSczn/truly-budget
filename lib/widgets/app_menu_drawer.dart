@@ -14,16 +14,7 @@ class AppMenuDrawer extends StatelessWidget {
       child: SafeArea(
         child: ListView(
           children: [
-            DrawerHeader(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Image.asset(
-                  'assets/logo_with_text_below.png',
-                  fit: BoxFit.contain,
-                  semanticLabel: 'TrulyBudget',
-                ),
-              ),
-            ),
+            const _DrawerBrandHeader(),
             ListTile(
               leading: const Icon(Icons.home_outlined, size: 22),
               title: const Text('Home'),
@@ -71,6 +62,41 @@ class AppMenuDrawer extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _DrawerBrandHeader extends StatelessWidget {
+  const _DrawerBrandHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 120,
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: Theme.of(context).dividerColor),
+        ),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return Center(
+            child: SizedBox(
+              width: constraints.maxWidth * 0.82,
+              height: constraints.maxHeight,
+              child: ClipRect(
+                child: Image.asset(
+                  'assets/logo_with_text_below.png',
+                  fit: BoxFit.cover,
+                  alignment: Alignment.center,
+                  semanticLabel: 'TrulyBudget',
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

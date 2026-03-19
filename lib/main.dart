@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import 'state/budget_store.dart';
 import 'screens/landing_screen.dart';
 import 'screens/month_screen.dart';
@@ -15,20 +16,26 @@ class TrulyBudgetApp extends StatelessWidget {
   final BudgetStore store;
   const TrulyBudgetApp({super.key, required this.store});
 
+  ThemeData _buildTheme(Brightness brightness) {
+    return ThemeData(
+      useMaterial3: true,
+      colorSchemeSeed: Colors.teal,
+      brightness: brightness,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider.value(
       value: store,
-      child: MaterialApp(
-        title: 'TrulyBudget',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorSchemeSeed: Colors.teal,
-          brightness: Brightness.light,
-          useMaterial3: true,
-        ),
-        home: Consumer<BudgetStore>(
-          builder: (_, s, __) {
+      child: Consumer<BudgetStore>(
+        builder: (_, s, __) => MaterialApp(
+          title: 'TrulyBudget',
+          debugShowCheckedModeBanner: false,
+          theme: _buildTheme(Brightness.light),
+          darkTheme: _buildTheme(Brightness.dark),
+          themeMode: s.themeMode,
+          home: () {
             if (!s.initialized) {
               return const Scaffold(
                 body: Center(child: CircularProgressIndicator()),
@@ -38,7 +45,7 @@ class TrulyBudgetApp extends StatelessWidget {
               return const MonthScreen();
             }
             return const LandingScreen();
-          },
+          }(),
         ),
       ),
     );

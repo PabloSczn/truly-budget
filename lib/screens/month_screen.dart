@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/category.dart';
 import '../state/budget_store.dart';
 import '../widgets/currency_selector.dart';
+import '../widgets/theme_mode_selector.dart';
 import '../widgets/category_card.dart';
 import '../widgets/add_category_dialog.dart';
 import '../widgets/delete_category_dialog.dart';
@@ -355,7 +356,10 @@ class _MonthScreenState extends State<MonthScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(ymLabel),
-          actions: const [CurrencySelectorAction()],
+          actions: const [
+            ThemeModeSelectorAction(),
+            CurrencySelectorAction(),
+          ],
         ),
         drawer: const AppMenuDrawer(),
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,

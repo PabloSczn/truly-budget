@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../state/budget_store.dart';
 import '../widgets/currency_selector.dart';
+import '../widgets/theme_mode_selector.dart';
 import 'month_selection_screen.dart';
 import 'year_overview_screen.dart';
 import '../widgets/app_menu_drawer.dart';
@@ -245,7 +246,10 @@ class LandingScreen extends StatelessWidget {
           fit: BoxFit.contain,
           semanticLabel: 'TrulyBudget',
         ),
-        actions: const [CurrencySelectorAction()],
+        actions: const [
+          ThemeModeSelectorAction(),
+          CurrencySelectorAction(),
+        ],
       ),
       drawer: const AppMenuDrawer(),
       body: ListView(
@@ -354,7 +358,7 @@ class LandingScreen extends StatelessWidget {
               padding: const EdgeInsets.only(top: 8.0),
               child: DismissibleTipBanner(
                 message:
-                    'Start by creating a new month. You can switch currency from the top right.',
+                    'Start by creating a new month. You can switch currency and theme from the top right.',
                 onClose: () {
                   context.read<BudgetStore>().dismissTip(_landingStartTipId);
                 },
