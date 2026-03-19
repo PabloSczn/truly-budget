@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -10,18 +11,48 @@ class AboutScreen extends StatefulWidget {
 }
 
 class _AboutScreenState extends State<AboutScreen> {
+  static const _emailAddress = 'sancheznarro.pablo@gmail.com';
   String? _version;
 
   @override
   void initState() {
     super.initState();
-    () async {
-      final info = await PackageInfo.fromPlatform();
-      final versionLabel = info.buildNumber.isEmpty
-          ? info.version
-          : '${info.version} (${info.buildNumber})';
-      setState(() => _version = versionLabel);
-    }();
+    _loadVersion();
+  }
+
+  Future<void> _loadVersion() async {
+    final info = await PackageInfo.fromPlatform();
+    final versionLabel = info.buildNumber.isEmpty
+        ? info.version
+        : '${info.version} (${info.buildNumber})';
+    if (!mounted) return;
+    setState(() => _version = versionLabel);
+  }
+
+  Future<void> _handleEmailTap() async {
+    final uri = Uri(
+      scheme: 'mailto',
+      path: _emailAddress,
+      queryParameters: const {'subject': 'Feedback'},
+    );
+
+    try {
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (launched) return;
+    } catch (_) {
+      // Fall back to copying the address when no email app is available.
+    }
+
+    await Clipboard.setData(const ClipboardData(text: _emailAddress));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('No email app found. Email address copied to clipboard.'),
+      ),
+    );
   }
 
   @override
@@ -41,21 +72,9 @@ class _AboutScreenState extends State<AboutScreen> {
             contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.email_outlined),
             title: const Text('Email'),
-            subtitle: const Text(
-              'sancheznarro.pablo@gmail.com',
-              softWrap: true,
-            ),
+            subtitle: const Text(_emailAddress, softWrap: true),
             isThreeLine: true,
-            onTap: () async {
-              final uri = Uri(
-                scheme: 'mailto',
-                path: 'sancheznarro.pablo@gmail.com',
-                query: 'subject=TrulyBudget%20Feedback',
-              );
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri);
-              }
-            },
+            onTap: _handleEmailTap,
           ),
           const SizedBox(height: 8),
           Text(
