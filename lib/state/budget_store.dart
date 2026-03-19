@@ -540,6 +540,61 @@ class BudgetStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  void updateIncome(
+    int incomeIndex, {
+    String? source,
+    double? amount,
+    DateTime? date,
+  }) {
+    final b = currentBudget!;
+    _assertEditable(b);
+    if (incomeIndex < 0 || incomeIndex >= b.incomes.length) return;
+
+    final current = b.incomes[incomeIndex];
+    final nextSource = (source ?? current.source).trim();
+    final nextAmount = amount ?? current.amount;
+
+    if (nextSource.isEmpty) {
+      throw Exception('Please describe the income source.');
+    }
+    if (nextAmount.isNaN || nextAmount.isInfinite || nextAmount <= 0) {
+      throw Exception('Enter a valid amount.');
+    }
+
+    final projectedTotalIncome = b.totalIncome - current.amount + nextAmount;
+    if (b.totalAllocated > projectedTotalIncome + 1e-6) {
+      throw Exception(
+        'Income cannot be lower than the amount already allocated.',
+      );
+    }
+
+    b.incomes[incomeIndex] = Income(
+      source: nextSource,
+      amount: nextAmount,
+      date: date ?? current.date,
+    );
+    _scheduleSave();
+    notifyListeners();
+  }
+
+  void removeIncome(int incomeIndex) {
+    final b = currentBudget!;
+    _assertEditable(b);
+    if (incomeIndex < 0 || incomeIndex >= b.incomes.length) return;
+
+    final income = b.incomes[incomeIndex];
+    final projectedTotalIncome = b.totalIncome - income.amount;
+    if (b.totalAllocated > projectedTotalIncome + 1e-6) {
+      throw Exception(
+        'Reduce category allocations before deleting this income.',
+      );
+    }
+
+    b.incomes.removeAt(incomeIndex);
+    _scheduleSave();
+    notifyListeners();
+  }
+
   void addExpense(String categoryId, String note, double amount,
       {String? emoji}) {
     final b = currentBudget!;

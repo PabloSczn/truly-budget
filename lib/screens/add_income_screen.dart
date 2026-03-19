@@ -5,7 +5,20 @@ import '../widgets/emoji_selector.dart';
 import '../widgets/money_amount_form_field.dart';
 
 class AddIncomeScreen extends StatefulWidget {
-  const AddIncomeScreen({super.key});
+  final int? incomeIndex;
+  final String initialSource;
+  final double? initialAmount;
+  final DateTime? initialDate;
+
+  const AddIncomeScreen({
+    super.key,
+    this.incomeIndex,
+    this.initialSource = 'Salary',
+    this.initialAmount,
+    this.initialDate,
+  });
+
+  bool get isEditing => incomeIndex != null;
 
   @override
   State<AddIncomeScreen> createState() => _AddIncomeScreenState();
@@ -43,16 +56,54 @@ class _EmojiPrefixButton extends StatelessWidget {
 }
 
 class _AddIncomeScreenState extends State<AddIncomeScreen> {
-  final sourceCtrl = TextEditingController(text: 'Salary');
-  final amountCtrl = TextEditingController();
+  late final TextEditingController sourceCtrl;
+  late final TextEditingController amountCtrl;
   final _formKey = GlobalKey<FormState>();
-  String leadingEmoji = '💼';
+  late String leadingEmoji;
+
+  @override
+  void initState() {
+    super.initState();
+    sourceCtrl = TextEditingController(text: widget.initialSource);
+    amountCtrl = TextEditingController(
+      text: widget.initialAmount == null
+          ? ''
+          : _formatInitialAmount(widget.initialAmount!),
+    );
+    leadingEmoji = _leadingEmojiFor(widget.initialSource);
+  }
 
   @override
   void dispose() {
     sourceCtrl.dispose();
     amountCtrl.dispose();
     super.dispose();
+  }
+
+  String _leadingEmojiFor(String source) {
+    final trimmed = source.trimLeft();
+    if (trimmed.isEmpty) return '💼';
+
+    final first = trimmed.characters.first;
+    if (RegExp(r'^[A-Za-z0-9]$').hasMatch(first)) {
+      return '💼';
+    }
+    return first;
+  }
+
+  String _formatInitialAmount(double amount) {
+    return amount
+        .toStringAsFixed(2)
+        .replaceFirst(RegExp(r'0+$'), '')
+        .replaceFirst(RegExp(r'\.$'), '');
+  }
+
+  String _messageFromError(Object error) {
+    final raw = error.toString().trim();
+    if (raw.startsWith('Exception: ')) {
+      return raw.substring('Exception: '.length).trim();
+    }
+    return raw.isEmpty ? 'Something went wrong.' : raw;
   }
 
   Future<void> _insertEmojiFromPicker() async {
@@ -71,11 +122,39 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
     );
   }
 
+  void _submit() {
+    if (!_formKey.currentState!.validate()) return;
+
+    final amount = double.parse(amountCtrl.text.replaceAll(',', '.'));
+    final store = context.read<BudgetStore>();
+
+    try {
+      if (widget.isEditing) {
+        store.updateIncome(
+          widget.incomeIndex!,
+          source: sourceCtrl.text.trim(),
+          amount: amount,
+          date: widget.initialDate,
+        );
+      } else {
+        store.addIncome(sourceCtrl.text.trim(), amount);
+      }
+
+      Navigator.of(context).pop(true);
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_messageFromError(error))),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final store = context.watch<BudgetStore>();
     return Scaffold(
-      appBar: AppBar(title: const Text('Add income')),
+      appBar: AppBar(
+        title: Text(widget.isEditing ? 'Edit income' : 'Add income'),
+      ),
       body: SafeArea(
         top: false,
         child: SingleChildScrollView(
@@ -118,15 +197,9 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
         top: false,
         minimum: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         child: FilledButton.icon(
-          onPressed: () {
-            if (_formKey.currentState!.validate()) {
-              final amount = double.parse(amountCtrl.text.replaceAll(',', '.'));
-              store.addIncome(sourceCtrl.text.trim(), amount);
-              Navigator.of(context).pop();
-            }
-          },
-          icon: const Icon(Icons.add),
-          label: const Text('Add income'),
+          onPressed: _submit,
+          icon: Icon(widget.isEditing ? Icons.save_outlined : Icons.add),
+          label: Text(widget.isEditing ? 'Save changes' : 'Add income'),
         ),
       ),
     );
