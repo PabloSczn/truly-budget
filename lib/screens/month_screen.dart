@@ -59,11 +59,18 @@ class _MonthScreenState extends State<MonthScreen> {
       builder: (_) => const AddCategoryDialog(showLimitField: true),
     );
     if (!mounted || result == null) return;
-    context.read<BudgetStore>().addCategory(
-          result.name,
-          result.emoji,
-          allocated: result.allocated,
-        );
+    try {
+      context.read<BudgetStore>().addCategory(
+            result.name,
+            result.emoji,
+            allocated: result.allocated,
+          );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_messageFromError(error))),
+      );
+    }
   }
 
   String _resolveCategoryForExpense(BudgetStore store, String? categoryId) {
@@ -233,7 +240,6 @@ class _MonthScreenState extends State<MonthScreen> {
                 ListTile(
                   leading: const Icon(Icons.edit_outlined),
                   title: const Text('Edit'),
-                  subtitle: const Text('Update expense category'),
                   onTap: () => Navigator.pop(
                     sheetContext,
                     _CategoryTileAction.edit,
@@ -250,8 +256,6 @@ class _MonthScreenState extends State<MonthScreen> {
                       color: Theme.of(sheetContext).colorScheme.error,
                     ),
                   ),
-                  subtitle: const Text(
-                      'Move expenses or remove them with the category'),
                   onTap: () => Navigator.pop(
                     sheetContext,
                     _CategoryTileAction.delete,

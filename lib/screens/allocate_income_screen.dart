@@ -188,8 +188,8 @@ class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
           (s, c) => s + (saveAllocations[c.id] ?? 0.0),
         );
 
-        if (total > _totalIncome + 1e-6) {
-          throw Exception('Total allocations exceed total income.');
+        if (_totalIncome > 1e-6 && total > _totalIncome + 1e-6) {
+          throw Exception('Total allocations exceed total income');
         }
 
         // Save totals (not incremental)

@@ -110,6 +110,20 @@ class BudgetStore extends ChangeNotifier {
     return debt > 0 ? debt : 0.0;
   }
 
+  bool _allowsPlannedAllocations(MonthBudget budget) {
+    return budget.totalIncome <= 1e-6;
+  }
+
+  void _validateTotalAllocated(
+    MonthBudget budget,
+    double totalAllocated,
+  ) {
+    if (_allowsPlannedAllocations(budget)) return;
+    if (totalAllocated > budget.totalIncome + 1e-6) {
+      throw Exception('Total allocations exceed total income');
+    }
+  }
+
   Category _ensureUncategorized(MonthBudget b) {
     for (final c in b.categories) {
       if (c.name.trim().toLowerCase() == 'uncategorized') return c;
@@ -368,9 +382,7 @@ class BudgetStore extends ChangeNotifier {
     if (allocated.isNaN || allocated.isInfinite || allocated < 0) {
       throw Exception('Category limit must be zero or more.');
     }
-    if (budget.totalAllocated + allocated > budget.totalIncome + 1e-6) {
-      throw Exception('Total allocations exceed total income.');
-    }
+    _validateTotalAllocated(budget, budget.totalAllocated + allocated);
     final cat = Category(
       id: _rid(),
       name: name.trim(),
@@ -409,9 +421,7 @@ class BudgetStore extends ChangeNotifier {
       (sum, current) =>
           sum + (current.id == categoryId ? nextAllocated : current.allocated),
     );
-    if (projectedTotalAllocated > b.totalIncome + 1e-6) {
-      throw Exception('Total allocations exceed total income.');
-    }
+    _validateTotalAllocated(b, projectedTotalAllocated);
 
     cat.name = nextName;
     cat.emoji = nextEmoji.isEmpty ? '🗂️' : nextEmoji;
@@ -504,9 +514,7 @@ class BudgetStore extends ChangeNotifier {
       newTotalAllocated += v;
     }
 
-    if (newTotalAllocated > b.totalIncome + 1e-6) {
-      throw Exception('Total allocations exceed total income.');
-    }
+    _validateTotalAllocated(b, newTotalAllocated);
 
     for (final c in b.categories) {
       if (newAllocatedByCategoryId.containsKey(c.id)) {
@@ -584,7 +592,8 @@ class BudgetStore extends ChangeNotifier {
 
     final income = b.incomes[incomeIndex];
     final projectedTotalIncome = b.totalIncome - income.amount;
-    if (b.totalAllocated > projectedTotalIncome + 1e-6) {
+    if (projectedTotalIncome > 1e-6 &&
+        b.totalAllocated > projectedTotalIncome + 1e-6) {
       throw Exception(
         'Reduce category allocations before deleting this income.',
       );
