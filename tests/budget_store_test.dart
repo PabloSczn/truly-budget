@@ -44,5 +44,27 @@ void main() {
 
       expect(store.debtForBudget(store.currentBudget!), 40);
     });
+
+    test('uses the updated allocation overflow message', () {
+      store.addIncome('Salary', 100);
+      final groceries = store.addCategory(
+        'Groceries',
+        '🛒',
+        allocated: 60,
+      );
+
+      expect(
+        () => store.setAllocationsByAmounts({
+          groceries.id: 101,
+        }),
+        throwsA(
+          isA<Exception>().having(
+            (error) => error.toString(),
+            'message',
+            'Exception: Total allocations exceeded total income',
+          ),
+        ),
+      );
+    });
   });
 }

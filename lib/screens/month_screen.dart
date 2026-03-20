@@ -29,6 +29,7 @@ class MonthScreen extends StatefulWidget {
 
 class _MonthScreenState extends State<MonthScreen> {
   String? _expandedIncomeRecordsMonthKey;
+  String? _expandedOverBudgetCategoriesMonthKey;
 
   void _goHome() {
     context.read<BudgetStore>().clearSelectedMonth();
@@ -50,6 +51,17 @@ class _MonthScreenState extends State<MonthScreen> {
     setState(() {
       _expandedIncomeRecordsMonthKey =
           _expandedIncomeRecordsMonthKey == ymKey ? null : ymKey;
+    });
+  }
+
+  bool _areOverBudgetCategoriesExpanded(String ymKey) {
+    return _expandedOverBudgetCategoriesMonthKey == ymKey;
+  }
+
+  void _toggleOverBudgetCategories(String ymKey) {
+    setState(() {
+      _expandedOverBudgetCategoriesMonthKey =
+          _expandedOverBudgetCategoriesMonthKey == ymKey ? null : ymKey;
     });
   }
 
@@ -486,6 +498,10 @@ class _MonthScreenState extends State<MonthScreen> {
     final carriedToLabel =
         debtAlreadyCarried ? YearMonth.labelFromKey(b.carriedDebtToKey!) : null;
     final isIncomeRecordsExpanded = _areIncomeRecordsExpanded(ymKey);
+    final isOverBudgetCategoriesExpanded =
+        _areOverBudgetCategoriesExpanded(ymKey);
+    final hasRecordedExpenses =
+        b.categories.any((category) => category.expenses.isNotEmpty);
 
     return PopScope(
       canPop: false,
@@ -628,36 +644,6 @@ class _MonthScreenState extends State<MonthScreen> {
                 ),
               ),
             ),
-            if (overCats.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Over-budget categories',
-                          style: Theme.of(context).textTheme.titleMedium),
-                      const SizedBox(height: 6),
-                      for (final c in overCats)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4.0),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text('${c.emoji}  ${c.name}'),
-                              Text(
-                                '+ ${Format.money((c.spent - c.allocated), symbol: store.currency.symbol)}',
-                                style: const TextStyle(color: Colors.red),
-                              ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
             const SizedBox(height: 6),
             Center(
               child: ConstrainedBox(
@@ -703,8 +689,18 @@ class _MonthScreenState extends State<MonthScreen> {
                 onLongPressIncome: _showIncomeActions,
               ),
             ],
+            if (overCats.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _OverBudgetCategoriesCard(
+                categories: overCats,
+                currencySymbol: store.currency.symbol,
+                isExpanded: isOverBudgetCategoriesExpanded,
+                onToggle: () => _toggleOverBudgetCategories(ymKey),
+              ),
+            ],
             const SizedBox(height: 16),
-            if (remainingAfterExpenses > 0 &&
+            if (hasRecordedExpenses &&
+                remainingAfterExpenses > 0 &&
                 !store.isTipDismissed(_monthSpareTipId))
               DismissibleTipBanner(
                 message:
@@ -891,6 +887,144 @@ class _IncomeRecordsCard extends StatelessWidget {
                           ),
                         ),
                         if (i != incomes.length - 1)
+                          Divider(
+                            height: 1,
+                            color: colorScheme.outlineVariant,
+                            indent: 14,
+                            endIndent: 14,
+                          ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            crossFadeState: isExpanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 180),
+            sizeCurve: Curves.easeOutCubic,
+            firstCurve: Curves.easeInOut,
+            secondCurve: Curves.easeInOut,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OverBudgetCategoriesCard extends StatelessWidget {
+  final List<Category> categories;
+  final String currencySymbol;
+  final bool isExpanded;
+  final VoidCallback onToggle;
+
+  const _OverBudgetCategoriesCard({
+    required this.categories,
+    required this.currencySymbol,
+    required this.isExpanded,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final totalOverBudget = categories.fold<double>(
+      0.0,
+      (sum, category) => sum + (category.spent - category.allocated),
+    );
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onToggle,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Over-budget categories',
+                        style: theme.textTheme.titleMedium,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Flexible(
+                      child: Text(
+                        '+ ${Format.money(totalOverBudget, symbol: currencySymbol)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          color: colorScheme.error,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    AnimatedRotation(
+                      turns: isExpanded ? 0.5 : 0.0,
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOutCubic,
+                      child: Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          AnimatedCrossFade(
+            firstChild: const SizedBox.shrink(),
+            secondChild: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Divider(
+                  height: 1,
+                  color: colorScheme.outlineVariant,
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Column(
+                    children: [
+                      for (var i = 0; i < categories.length; i++) ...[
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '${categories[i].emoji}  ${categories[i].name}',
+                                  style: theme.textTheme.bodyLarge?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                '+ ${Format.money(categories[i].spent - categories[i].allocated, symbol: currencySymbol)}',
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  color: colorScheme.error,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (i != categories.length - 1)
                           Divider(
                             height: 1,
                             color: colorScheme.outlineVariant,

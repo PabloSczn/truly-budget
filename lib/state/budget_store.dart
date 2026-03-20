@@ -120,7 +120,7 @@ class BudgetStore extends ChangeNotifier {
   ) {
     if (_allowsPlannedAllocations(budget)) return;
     if (totalAllocated > budget.totalIncome + 1e-6) {
-      throw Exception('Total allocations exceed total income');
+      throw Exception('Total allocations exceeded total income');
     }
   }
 
