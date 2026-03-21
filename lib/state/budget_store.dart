@@ -120,7 +120,7 @@ class BudgetStore extends ChangeNotifier {
   ) {
     if (_allowsPlannedAllocations(budget)) return;
     if (totalAllocated > budget.totalIncome + 1e-6) {
-      throw Exception('Total allocations exceeded total income');
+      throw Exception('Total allocations exceed total income');
     }
   }
 
@@ -633,6 +633,35 @@ class BudgetStore extends ChangeNotifier {
       emoji: emoji ?? old.emoji,
       date: date ?? old.date,
     );
+    _scheduleSave();
+    notifyListeners();
+  }
+
+  void moveExpense(
+      String categoryId, int expenseIndex, String targetCategoryId) {
+    final b = currentBudget!;
+    _assertEditable(b);
+    if (categoryId == targetCategoryId) {
+      throw Exception('Choose another category for this expense.');
+    }
+
+    final sourceIndex = b.categories.indexWhere((c) => c.id == categoryId);
+    if (sourceIndex < 0) {
+      throw Exception('Source category not found.');
+    }
+
+    final targetIndex =
+        b.categories.indexWhere((c) => c.id == targetCategoryId);
+    if (targetIndex < 0) {
+      throw Exception('Target category not found.');
+    }
+
+    final source = b.categories[sourceIndex];
+    if (expenseIndex < 0 || expenseIndex >= source.expenses.length) return;
+
+    final expense = source.expenses.removeAt(expenseIndex);
+    final target = b.categories[targetIndex];
+    target.expenses.add(expense);
     _scheduleSave();
     notifyListeners();
   }
