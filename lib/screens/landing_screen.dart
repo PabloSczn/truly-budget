@@ -6,6 +6,7 @@ import '../widgets/theme_mode_selector.dart';
 import 'month_selection_screen.dart';
 import 'year_overview_screen.dart';
 import '../widgets/app_menu_drawer.dart';
+import '../widgets/bottom_banner_ad.dart';
 import '../widgets/dismissible_tip_banner.dart';
 import '../widgets/month_overview_tile.dart';
 import '../utils/format.dart';
@@ -252,6 +253,7 @@ class LandingScreen extends StatelessWidget {
         ],
       ),
       drawer: const AppMenuDrawer(),
+      bottomNavigationBar: const BottomBannerAd(),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

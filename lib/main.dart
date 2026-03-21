@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'services/app_ads_controller.dart';
 import 'state/budget_store.dart';
 import 'screens/landing_screen.dart';
 import 'screens/month_screen.dart';
@@ -8,13 +11,20 @@ import 'screens/month_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final store = BudgetStore();
+  final adsController = AppAdsController();
   await store.load();
-  runApp(TrulyBudgetApp(store: store));
+  unawaited(adsController.initialize());
+  runApp(TrulyBudgetApp(store: store, adsController: adsController));
 }
 
 class TrulyBudgetApp extends StatelessWidget {
   final BudgetStore store;
-  const TrulyBudgetApp({super.key, required this.store});
+  final AppAdsController adsController;
+  const TrulyBudgetApp({
+    super.key,
+    required this.store,
+    required this.adsController,
+  });
 
   ThemeData _buildTheme(Brightness brightness) {
     return ThemeData(
@@ -26,8 +36,11 @@ class TrulyBudgetApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider.value(
-      value: store,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: store),
+        ChangeNotifierProvider.value(value: adsController),
+      ],
       child: Consumer<BudgetStore>(
         builder: (_, s, __) => MaterialApp(
           title: 'TrulyBudget',

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../screens/data_management_screen.dart';
 import '../screens/year_overview_screen.dart';
 import '../screens/about_screen.dart';
+import '../services/app_ads_controller.dart';
 import '../state/budget_store.dart';
 
 class AppMenuDrawer extends StatelessWidget {
@@ -10,6 +11,9 @@ class AppMenuDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final adsController = context.watch<AppAdsController?>();
+    final showPrivacyChoices = adsController?.privacyOptionsRequired ?? false;
+
     return Drawer(
       child: SafeArea(
         child: ListView(
@@ -60,6 +64,22 @@ class AppMenuDrawer extends StatelessWidget {
                 );
               },
             ),
+            if (showPrivacyChoices)
+              ListTile(
+                leading: const Icon(Icons.privacy_tip_outlined, size: 22),
+                title: const Text('Privacy choices'),
+                onTap: () async {
+                  final navigator = Navigator.of(context);
+                  final messenger = ScaffoldMessenger.of(context);
+                  navigator.pop();
+                  final errorMessage =
+                      await adsController?.showPrivacyOptionsForm();
+                  if (!context.mounted || errorMessage == null) return;
+                  messenger.showSnackBar(
+                    SnackBar(content: Text(errorMessage)),
+                  );
+                },
+              ),
           ],
         ),
       ),
