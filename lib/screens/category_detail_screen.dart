@@ -4,8 +4,11 @@ import '../state/budget_store.dart';
 import '../utils/format.dart';
 import '../widgets/expenses/add_expense_dialog.dart';
 import '../widgets/expenses/edit_expense_dialog.dart';
+import '../widgets/expenses/move_expense_dialog.dart';
 
 enum _CategoryBudgetTone { healthy, warning, danger, overBudget }
+
+enum _ExpenseAction { move, delete, cancel }
 
 class CategoryDetailScreen extends StatelessWidget {
   final String categoryId;
@@ -17,6 +20,8 @@ class CategoryDetailScreen extends StatelessWidget {
     final b = store.currentBudget!;
     final canEdit = !b.isCompleted;
     final cat = b.categories.firstWhere((c) => c.id == categoryId);
+    final otherCategories =
+        b.categories.where((c) => c.id != categoryId).toList(growable: false);
     final isUncategorized = cat.name.trim().toLowerCase() == 'uncategorized';
 
     final spent = cat.spent;
@@ -217,30 +222,75 @@ class CategoryDetailScreen extends StatelessWidget {
                     if (!canEdit) return;
                     final store = context.read<BudgetStore>();
                     final messenger = ScaffoldMessenger.of(context);
-                    final action = await showModalBottomSheet<String>(
+                    final action = await showModalBottomSheet<_ExpenseAction>(
                       context: context,
                       showDragHandle: true,
-                      builder: (_) => SafeArea(
+                      builder: (sheetContext) => SafeArea(
                         child:
                             Column(mainAxisSize: MainAxisSize.min, children: [
+                          ListTile(
+                            leading: const Icon(Icons.drive_file_move_outline),
+                            title: const Text('Move to category'),
+                            subtitle: otherCategories.isEmpty
+                                ? const Text('Add another category first')
+                                : null,
+                            enabled: otherCategories.isNotEmpty,
+                            onTap: otherCategories.isEmpty
+                                ? null
+                                : () => Navigator.pop(
+                                      sheetContext,
+                                      _ExpenseAction.move,
+                                    ),
+                          ),
                           ListTile(
                             leading: const Icon(Icons.delete_outline,
                                 color: Colors.red),
                             title: const Text('Delete expense',
                                 style: TextStyle(color: Colors.red)),
-                            onTap: () => Navigator.pop(context, 'delete'),
+                            onTap: () => Navigator.pop(
+                              sheetContext,
+                              _ExpenseAction.delete,
+                            ),
                           ),
                           const SizedBox(height: 4),
                           ListTile(
                             leading: const Icon(Icons.close),
                             title: const Text('Cancel'),
-                            onTap: () => Navigator.pop(context, 'cancel'),
+                            onTap: () => Navigator.pop(
+                              sheetContext,
+                              _ExpenseAction.cancel,
+                            ),
                           ),
                           const SizedBox(height: 8),
                         ]),
                       ),
                     );
-                    if (!context.mounted || action != 'delete') return;
+                    if (!context.mounted || action == null) return;
+
+                    if (action == _ExpenseAction.move) {
+                      final targetCategoryId = await showDialog<String>(
+                        context: context,
+                        builder: (_) => MoveExpenseDialog(
+                          expense: e,
+                          otherCategories: otherCategories,
+                          currencySymbol: store.currency.symbol,
+                        ),
+                      );
+                      if (!context.mounted || targetCategoryId == null) return;
+
+                      store.moveExpense(categoryId, i, targetCategoryId);
+                      final movedTo = otherCategories.firstWhere(
+                        (category) => category.id == targetCategoryId,
+                      );
+                      messenger.showSnackBar(
+                        SnackBar(
+                          content: Text('Expense moved to ${movedTo.name}'),
+                        ),
+                      );
+                      return;
+                    }
+
+                    if (action != _ExpenseAction.delete) return;
 
                     final confirm = await showDialog<bool>(
                       context: context,

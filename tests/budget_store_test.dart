@@ -45,6 +45,46 @@ void main() {
       expect(store.debtForBudget(store.currentBudget!), 40);
     });
 
+    test('moves an expense to another category', () {
+      final groceries = store.addCategory(
+        'Groceries',
+        '🛒',
+      );
+      final dining = store.addCategory(
+        'Dining',
+        '🍽️',
+      );
+
+      store.addExpense(groceries.id, 'Milk', 12.5, emoji: '🥛');
+      store.moveExpense(groceries.id, 0, dining.id);
+
+      expect(groceries.expenses, isEmpty);
+      expect(dining.expenses, hasLength(1));
+      expect(dining.expenses.single.note, 'Milk');
+      expect(dining.expenses.single.amount, 12.5);
+      expect(dining.expenses.single.emoji, '🥛');
+    });
+
+    test('requires a different category when moving an expense', () {
+      final groceries = store.addCategory(
+        'Groceries',
+        '🛒',
+      );
+
+      store.addExpense(groceries.id, 'Milk', 12.5);
+
+      expect(
+        () => store.moveExpense(groceries.id, 0, groceries.id),
+        throwsA(
+          isA<Exception>().having(
+            (error) => error.toString(),
+            'message',
+            'Exception: Choose another category for this expense.',
+          ),
+        ),
+      );
+    });
+
     test('uses the updated allocation overflow message', () {
       store.addIncome('Salary', 100);
       final groceries = store.addCategory(
@@ -61,7 +101,7 @@ void main() {
           isA<Exception>().having(
             (error) => error.toString(),
             'message',
-            'Exception: Total allocations exceeded total income',
+            'Exception: Total allocations exceed total income',
           ),
         ),
       );

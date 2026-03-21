@@ -225,7 +225,7 @@ class _MonthScreenState extends State<MonthScreen> {
       store.removeIncome(incomeIndex);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Income deleted.')),
+        const SnackBar(content: Text('Income deleted')),
       );
     } catch (error) {
       if (!mounted) return;
@@ -325,7 +325,7 @@ class _MonthScreenState extends State<MonthScreen> {
           );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Category updated.')),
+        const SnackBar(content: Text('Category updated')),
       );
     } catch (e) {
       if (!mounted) return;
@@ -369,7 +369,7 @@ class _MonthScreenState extends State<MonthScreen> {
                   DeleteCategoryExpenseAction.moveExpenses &&
               expenseCount > 0
           ? 'Category deleted and $expenseCount expense${expenseCount == 1 ? '' : 's'} moved to ${moveTargetName ?? 'the selected category'}.'
-          : 'Category deleted.';
+          : 'Category deleted';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
       );

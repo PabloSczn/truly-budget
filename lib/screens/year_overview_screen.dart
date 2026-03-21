@@ -244,7 +244,7 @@ class _YearOverviewScreenState extends State<YearOverviewScreen> {
     if (!mounted || confirmDelete != true) return;
     store.deleteMonth(ymKey);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Month budget deleted.')),
+      const SnackBar(content: Text('Month budget deleted')),
     );
   }
 

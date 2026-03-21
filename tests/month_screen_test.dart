@@ -36,7 +36,7 @@ void main() {
         await tester.pump();
 
         expect(
-          find.text('Total allocations exceeded total income'),
+          find.text('Total allocations exceed total income'),
           findsOneWidget,
         );
 
@@ -45,7 +45,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(
-          find.text('Total allocations exceeded total income'),
+          find.text('Total allocations exceed total income'),
           findsNothing,
         );
       },

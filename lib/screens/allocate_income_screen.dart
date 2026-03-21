@@ -223,7 +223,7 @@ class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
         );
 
         if (_totalIncome > 1e-6 && total > _totalIncome + 1e-6) {
-          throw Exception('Total allocations exceeded total income');
+          throw Exception('Total allocations exceed total income');
         }
 
         // Save totals (not incremental)
@@ -232,7 +232,7 @@ class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
         if (!mounted) return;
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Allocations updated.')),
+          const SnackBar(content: Text('Allocations updated')),
         );
       } catch (e) {
         _showErrorSnackBar(_messageFromError(e));
