@@ -1,6 +1,8 @@
 import java.util.Base64
 import java.util.Properties
 
+val defaultAdmobAndroidAppId = "ca-app-pub-3940256099942544~3347511713"
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -53,7 +55,7 @@ android {
         applicationId = "com.pablosanchez.trulybudget"
         minSdk = flutter.minSdkVersion
         manifestPlaceholders["admobAppId"] =
-            dartDefinesMap()["ADMOB_ANDROID_APP_ID"] ?: ""
+            dartDefinesMap()["ADMOB_ANDROID_APP_ID"] ?: defaultAdmobAndroidAppId
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
