@@ -1,3 +1,4 @@
+import java.util.Base64
 import java.util.Properties
 
 plugins {
@@ -5,6 +6,25 @@ plugins {
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+fun dartDefinesMap(): Map<String, String> {
+    val dartDefines = project.findProperty("dart-defines") as String? ?: return emptyMap()
+
+    return dartDefines
+        .split(",")
+        .filter { it.isNotBlank() }
+        .mapNotNull { encodedValue ->
+            val decodedValue = String(Base64.getDecoder().decode(encodedValue))
+            val separatorIndex = decodedValue.indexOf('=')
+            if (separatorIndex == -1) {
+                null
+            } else {
+                decodedValue.substring(0, separatorIndex) to
+                    decodedValue.substring(separatorIndex + 1)
+            }
+        }
+        .toMap()
 }
 
 val keystoreProperties = Properties()
@@ -32,6 +52,8 @@ android {
     defaultConfig {
         applicationId = "com.pablosanchez.trulybudget"
         minSdk = flutter.minSdkVersion
+        manifestPlaceholders["admobAppId"] =
+            dartDefinesMap()["ADMOB_ANDROID_APP_ID"] ?: ""
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

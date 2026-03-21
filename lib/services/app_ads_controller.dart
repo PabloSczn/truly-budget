@@ -4,26 +4,46 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
+const bool _adsEnabled = bool.fromEnvironment('ENABLE_ADS');
+const String _androidAppId = String.fromEnvironment('ADMOB_ANDROID_APP_ID');
 const bool _useLiveAds = bool.fromEnvironment('USE_LIVE_ADS');
+const String _androidLiveBannerAdUnitId =
+    String.fromEnvironment('ADMOB_ANDROID_LIVE_BANNER_AD_UNIT_ID');
+const String _androidTestBannerAdUnitId =
+    String.fromEnvironment('ADMOB_ANDROID_TEST_BANNER_AD_UNIT_ID');
 
 class AppAdsController extends ChangeNotifier {
-  static const String _androidLiveBannerAdUnitId =
-      'ca-app-pub-1687902853404140/8325340124';
-  static const String _androidTestBannerAdUnitId =
-      'ca-app-pub-3940256099942544/9214589741';
-
   bool _initialized = false;
   bool _canRequestAds = false;
   bool _privacyOptionsRequired = false;
 
-  bool get adsSupported => !kIsWeb && Platform.isAndroid;
+  String? get _configuredBannerAdUnitId {
+    final adUnitId =
+        (_useLiveAds ? _androidLiveBannerAdUnitId : _androidTestBannerAdUnitId)
+            .trim();
+    return adUnitId.isEmpty ? null : adUnitId;
+  }
+
+  bool get adsSupported =>
+      _adsEnabled &&
+      !kIsWeb &&
+      Platform.isAndroid &&
+      _androidAppId.trim().isNotEmpty &&
+      _configuredBannerAdUnitId != null;
   bool get canRequestAds => adsSupported && _canRequestAds;
   bool get privacyOptionsRequired => adsSupported && _privacyOptionsRequired;
 
-  String get bannerAdUnitId =>
-      _useLiveAds ? _androidLiveBannerAdUnitId : _androidTestBannerAdUnitId;
+  String get bannerAdUnitId => _configuredBannerAdUnitId!;
 
   Future<void> initialize() async {
+    if (_adsEnabled && !adsSupported) {
+      debugPrint(
+        'Ads are enabled, but AdMob IDs are missing. Provide '
+        'ADMOB_ANDROID_APP_ID and the matching banner ad unit ID via '
+        '--dart-define or --dart-define-from-file.',
+      );
+    }
+
     if (_initialized || !adsSupported) return;
     _initialized = true;
 
