@@ -14,6 +14,9 @@ class AllocateIncomeScreen extends StatefulWidget {
 
 class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
   bool usePercent = false;
+  ScaffoldFeatureController<SnackBar, SnackBarClosedReason>?
+      _errorSnackBarController;
+  String? _errorSnackBarMessage;
 
   final Map<String, TextEditingController> ctrls = {};
   final Map<String, FocusNode> foci = {};
@@ -37,6 +40,37 @@ class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
   double _parseNum(String s) {
     final t = s.trim().replaceAll(',', '.');
     return double.tryParse(t) ?? 0.0;
+  }
+
+  String _messageFromError(Object error) {
+    final raw = error.toString().trim();
+    if (raw.startsWith('Exception: ')) {
+      return raw.substring('Exception: '.length).trim();
+    }
+    return raw.isEmpty ? 'Something went wrong.' : raw;
+  }
+
+  void _showErrorSnackBar(String message) {
+    if (_errorSnackBarController != null && _errorSnackBarMessage == message) {
+      return;
+    }
+
+    final controller = ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 4),
+      ),
+    );
+
+    _errorSnackBarController = controller;
+    _errorSnackBarMessage = message;
+
+    controller.closed.then((_) {
+      if (identical(_errorSnackBarController, controller)) {
+        _errorSnackBarController = null;
+        _errorSnackBarMessage = null;
+      }
+    });
   }
 
   bool _isDisplayedZero(String s) {
@@ -188,8 +222,8 @@ class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
           (s, c) => s + (saveAllocations[c.id] ?? 0.0),
         );
 
-        if (total > _totalIncome + 1e-6) {
-          throw Exception('Total allocations exceed total income.');
+        if (_totalIncome > 1e-6 && total > _totalIncome + 1e-6) {
+          throw Exception('Total allocations exceeded total income');
         }
 
         // Save totals (not incremental)
@@ -201,9 +235,7 @@ class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
           const SnackBar(content: Text('Allocations updated.')),
         );
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
-        );
+        _showErrorSnackBar(_messageFromError(e));
       }
     }
 

@@ -110,6 +110,20 @@ class BudgetStore extends ChangeNotifier {
     return debt > 0 ? debt : 0.0;
   }
 
+  bool _allowsPlannedAllocations(MonthBudget budget) {
+    return budget.totalIncome <= 1e-6;
+  }
+
+  void _validateTotalAllocated(
+    MonthBudget budget,
+    double totalAllocated,
+  ) {
+    if (_allowsPlannedAllocations(budget)) return;
+    if (totalAllocated > budget.totalIncome + 1e-6) {
+      throw Exception('Total allocations exceeded total income');
+    }
+  }
+
   Category _ensureUncategorized(MonthBudget b) {
     for (final c in b.categories) {
       if (c.name.trim().toLowerCase() == 'uncategorized') return c;
@@ -368,9 +382,7 @@ class BudgetStore extends ChangeNotifier {
     if (allocated.isNaN || allocated.isInfinite || allocated < 0) {
       throw Exception('Category limit must be zero or more.');
     }
-    if (budget.totalAllocated + allocated > budget.totalIncome + 1e-6) {
-      throw Exception('Total allocations exceed total income.');
-    }
+    _validateTotalAllocated(budget, budget.totalAllocated + allocated);
     final cat = Category(
       id: _rid(),
       name: name.trim(),
@@ -409,9 +421,7 @@ class BudgetStore extends ChangeNotifier {
       (sum, current) =>
           sum + (current.id == categoryId ? nextAllocated : current.allocated),
     );
-    if (projectedTotalAllocated > b.totalIncome + 1e-6) {
-      throw Exception('Total allocations exceed total income.');
-    }
+    _validateTotalAllocated(b, projectedTotalAllocated);
 
     cat.name = nextName;
     cat.emoji = nextEmoji.isEmpty ? '🗂️' : nextEmoji;
@@ -504,9 +514,7 @@ class BudgetStore extends ChangeNotifier {
       newTotalAllocated += v;
     }
 
-    if (newTotalAllocated > b.totalIncome + 1e-6) {
-      throw Exception('Total allocations exceed total income.');
-    }
+    _validateTotalAllocated(b, newTotalAllocated);
 
     for (final c in b.categories) {
       if (newAllocatedByCategoryId.containsKey(c.id)) {
@@ -536,6 +544,62 @@ class BudgetStore extends ChangeNotifier {
   void addIncome(String source, double amount) {
     _assertEditable(currentBudget!);
     currentBudget!.incomes.add(Income(source: source, amount: amount));
+    _scheduleSave();
+    notifyListeners();
+  }
+
+  void updateIncome(
+    int incomeIndex, {
+    String? source,
+    double? amount,
+    DateTime? date,
+  }) {
+    final b = currentBudget!;
+    _assertEditable(b);
+    if (incomeIndex < 0 || incomeIndex >= b.incomes.length) return;
+
+    final current = b.incomes[incomeIndex];
+    final nextSource = (source ?? current.source).trim();
+    final nextAmount = amount ?? current.amount;
+
+    if (nextSource.isEmpty) {
+      throw Exception('Please describe the income source.');
+    }
+    if (nextAmount.isNaN || nextAmount.isInfinite || nextAmount <= 0) {
+      throw Exception('Enter a valid amount.');
+    }
+
+    final projectedTotalIncome = b.totalIncome - current.amount + nextAmount;
+    if (b.totalAllocated > projectedTotalIncome + 1e-6) {
+      throw Exception(
+        'Income cannot be lower than the amount already allocated.',
+      );
+    }
+
+    b.incomes[incomeIndex] = Income(
+      source: nextSource,
+      amount: nextAmount,
+      date: date ?? current.date,
+    );
+    _scheduleSave();
+    notifyListeners();
+  }
+
+  void removeIncome(int incomeIndex) {
+    final b = currentBudget!;
+    _assertEditable(b);
+    if (incomeIndex < 0 || incomeIndex >= b.incomes.length) return;
+
+    final income = b.incomes[incomeIndex];
+    final projectedTotalIncome = b.totalIncome - income.amount;
+    if (projectedTotalIncome > 1e-6 &&
+        b.totalAllocated > projectedTotalIncome + 1e-6) {
+      throw Exception(
+        'Reduce category allocations before deleting this income.',
+      );
+    }
+
+    b.incomes.removeAt(incomeIndex);
     _scheduleSave();
     notifyListeners();
   }

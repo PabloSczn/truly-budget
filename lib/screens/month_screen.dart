@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/category.dart';
+import '../models/income.dart';
 import '../state/budget_store.dart';
 import '../widgets/currency_selector.dart';
 import '../widgets/theme_mode_selector.dart';
@@ -27,8 +28,41 @@ class MonthScreen extends StatefulWidget {
 }
 
 class _MonthScreenState extends State<MonthScreen> {
+  String? _expandedIncomeRecordsMonthKey;
+  String? _expandedOverBudgetCategoriesMonthKey;
+
   void _goHome() {
     context.read<BudgetStore>().clearSelectedMonth();
+  }
+
+  String _messageFromError(Object error) {
+    final raw = error.toString().trim();
+    if (raw.startsWith('Exception: ')) {
+      return raw.substring('Exception: '.length).trim();
+    }
+    return raw.isEmpty ? 'Something went wrong.' : raw;
+  }
+
+  bool _areIncomeRecordsExpanded(String ymKey) {
+    return _expandedIncomeRecordsMonthKey == ymKey;
+  }
+
+  void _toggleIncomeRecords(String ymKey) {
+    setState(() {
+      _expandedIncomeRecordsMonthKey =
+          _expandedIncomeRecordsMonthKey == ymKey ? null : ymKey;
+    });
+  }
+
+  bool _areOverBudgetCategoriesExpanded(String ymKey) {
+    return _expandedOverBudgetCategoriesMonthKey == ymKey;
+  }
+
+  void _toggleOverBudgetCategories(String ymKey) {
+    setState(() {
+      _expandedOverBudgetCategoriesMonthKey =
+          _expandedOverBudgetCategoriesMonthKey == ymKey ? null : ymKey;
+    });
   }
 
   Future<void> _showAddCategoryDialog() async {
@@ -37,11 +71,18 @@ class _MonthScreenState extends State<MonthScreen> {
       builder: (_) => const AddCategoryDialog(showLimitField: true),
     );
     if (!mounted || result == null) return;
-    context.read<BudgetStore>().addCategory(
-          result.name,
-          result.emoji,
-          allocated: result.allocated,
-        );
+    try {
+      context.read<BudgetStore>().addCategory(
+            result.name,
+            result.emoji,
+            allocated: result.allocated,
+          );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_messageFromError(error))),
+      );
+    }
   }
 
   String _resolveCategoryForExpense(BudgetStore store, String? categoryId) {
@@ -81,6 +122,119 @@ class _MonthScreenState extends State<MonthScreen> {
     );
   }
 
+  Future<void> _showIncomeEditor({int? incomeIndex}) async {
+    final store = context.read<BudgetStore>();
+    final b = store.currentBudget;
+    if (b == null) return;
+
+    Income? income;
+    if (incomeIndex != null &&
+        incomeIndex >= 0 &&
+        incomeIndex < b.incomes.length) {
+      income = b.incomes[incomeIndex];
+    }
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => AddIncomeScreen(
+          incomeIndex: incomeIndex,
+          initialSource: income?.source ?? 'Salary',
+          initialAmount: income?.amount,
+          initialDate: income?.date,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showIncomeActions(int incomeIndex) async {
+    final store = context.read<BudgetStore>();
+    final b = store.currentBudget;
+    if (b == null ||
+        b.isCompleted ||
+        incomeIndex < 0 ||
+        incomeIndex >= b.incomes.length) {
+      return;
+    }
+
+    final income = b.incomes[incomeIndex];
+    final action = await showModalBottomSheet<_IncomeTileAction>(
+      context: context,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.delete_outline_rounded,
+                      color: Colors.red),
+                  title: const Text(
+                    'Delete income',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                  onTap: () => Navigator.pop(
+                    sheetContext,
+                    _IncomeTileAction.delete,
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.close_rounded),
+                  title: const Text('Cancel'),
+                  onTap: () => Navigator.pop(
+                    sheetContext,
+                    _IncomeTileAction.cancel,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (!mounted || action != _IncomeTileAction.delete) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Delete income?'),
+        content: Text(
+          'This will remove:\n\n${income.source.trim().isEmpty ? 'Income' : income.source}\n${Format.money(income.amount, symbol: store.currency.symbol)}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || confirm != true) return;
+
+    try {
+      store.removeIncome(incomeIndex);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Income deleted.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_messageFromError(error))),
+      );
+    }
+  }
+
   Future<void> _showCategoryActions(Category category) async {
     final action = await showModalBottomSheet<_CategoryTileAction>(
       context: context,
@@ -98,7 +252,6 @@ class _MonthScreenState extends State<MonthScreen> {
                 ListTile(
                   leading: const Icon(Icons.edit_outlined),
                   title: const Text('Edit'),
-                  subtitle: const Text('Update expense category'),
                   onTap: () => Navigator.pop(
                     sheetContext,
                     _CategoryTileAction.edit,
@@ -115,8 +268,6 @@ class _MonthScreenState extends State<MonthScreen> {
                       color: Theme.of(sheetContext).colorScheme.error,
                     ),
                   ),
-                  subtitle: const Text(
-                      'Move expenses or remove them with the category'),
                   onTap: () => Navigator.pop(
                     sheetContext,
                     _CategoryTileAction.delete,
@@ -346,6 +497,11 @@ class _MonthScreenState extends State<MonthScreen> {
     final hasNextMonth = store.hasNextMonthCreated(ymKey);
     final carriedToLabel =
         debtAlreadyCarried ? YearMonth.labelFromKey(b.carriedDebtToKey!) : null;
+    final isIncomeRecordsExpanded = _areIncomeRecordsExpanded(ymKey);
+    final isOverBudgetCategoriesExpanded =
+        _areOverBudgetCategoriesExpanded(ymKey);
+    final hasRecordedExpenses =
+        b.categories.any((category) => category.expenses.isNotEmpty);
 
     return PopScope(
       canPop: false,
@@ -488,36 +644,6 @@ class _MonthScreenState extends State<MonthScreen> {
                 ),
               ),
             ),
-            if (overCats.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Over-budget categories',
-                          style: Theme.of(context).textTheme.titleMedium),
-                      const SizedBox(height: 6),
-                      for (final c in overCats)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4.0),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text('${c.emoji}  ${c.name}'),
-                              Text(
-                                '+ ${Format.money((c.spent - c.allocated), symbol: store.currency.symbol)}',
-                                style: const TextStyle(color: Colors.red),
-                              ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
             const SizedBox(height: 6),
             Center(
               child: ConstrainedBox(
@@ -526,15 +652,7 @@ class _MonthScreenState extends State<MonthScreen> {
                   children: [
                     Expanded(
                       child: FilledButton(
-                        onPressed: !canEdit
-                            ? null
-                            : () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => const AddIncomeScreen(),
-                                  ),
-                                );
-                              },
+                        onPressed: !canEdit ? null : () => _showIncomeEditor(),
                         child: const Text('Add income'),
                       ),
                     ),
@@ -558,8 +676,31 @@ class _MonthScreenState extends State<MonthScreen> {
                 ),
               ),
             ),
+            if (b.incomes.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _IncomeRecordsCard(
+                incomes: b.incomes,
+                currencySymbol: store.currency.symbol,
+                canEdit: canEdit,
+                isExpanded: isIncomeRecordsExpanded,
+                onToggle: () => _toggleIncomeRecords(ymKey),
+                onTapIncome: (incomeIndex) =>
+                    _showIncomeEditor(incomeIndex: incomeIndex),
+                onLongPressIncome: _showIncomeActions,
+              ),
+            ],
+            if (overCats.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _OverBudgetCategoriesCard(
+                categories: overCats,
+                currencySymbol: store.currency.symbol,
+                isExpanded: isOverBudgetCategoriesExpanded,
+                onToggle: () => _toggleOverBudgetCategories(ymKey),
+              ),
+            ],
             const SizedBox(height: 16),
-            if (remainingAfterExpenses > 0 &&
+            if (hasRecordedExpenses &&
+                remainingAfterExpenses > 0 &&
                 !store.isTipDismissed(_monthSpareTipId))
               DismissibleTipBanner(
                 message:
@@ -590,6 +731,321 @@ class _MonthScreenState extends State<MonthScreen> {
             const SizedBox(height: 80),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _IncomeRecordsCard extends StatelessWidget {
+  final List<Income> incomes;
+  final String currencySymbol;
+  final bool canEdit;
+  final bool isExpanded;
+  final VoidCallback onToggle;
+  final ValueChanged<int> onTapIncome;
+  final ValueChanged<int> onLongPressIncome;
+
+  const _IncomeRecordsCard({
+    required this.incomes,
+    required this.currencySymbol,
+    required this.canEdit,
+    required this.isExpanded,
+    required this.onToggle,
+    required this.onTapIncome,
+    required this.onLongPressIncome,
+  });
+
+  String _incomeLabel(Income income) {
+    final source = income.source.trim();
+    return source.isEmpty ? 'Income' : source;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final localizations = MaterialLocalizations.of(context);
+    final totalIncome = incomes.fold<double>(
+      0.0,
+      (sum, income) => sum + income.amount,
+    );
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onToggle,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Income records',
+                        style: theme.textTheme.titleMedium,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Flexible(
+                      child: Text(
+                        Format.money(totalIncome, symbol: currencySymbol),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    AnimatedRotation(
+                      turns: isExpanded ? 0.5 : 0.0,
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOutCubic,
+                      child: Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          AnimatedCrossFade(
+            firstChild: const SizedBox.shrink(),
+            secondChild: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Divider(
+                  height: 1,
+                  color: colorScheme.outlineVariant,
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Column(
+                    children: [
+                      for (var i = 0; i < incomes.length; i++) ...[
+                        Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: canEdit ? () => onTapIncome(i) : null,
+                            onLongPress:
+                                canEdit ? () => onLongPressIncome(i) : null,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 12,
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          _incomeLabel(incomes[i]),
+                                          style: theme.textTheme.bodyLarge
+                                              ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          localizations.formatMediumDate(
+                                            incomes[i].date,
+                                          ),
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                            color: colorScheme.onSurfaceVariant,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    Format.money(
+                                      incomes[i].amount,
+                                      symbol: currencySymbol,
+                                    ),
+                                    style: theme.textTheme.titleSmall?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (i != incomes.length - 1)
+                          Divider(
+                            height: 1,
+                            color: colorScheme.outlineVariant,
+                            indent: 14,
+                            endIndent: 14,
+                          ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            crossFadeState: isExpanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 180),
+            sizeCurve: Curves.easeOutCubic,
+            firstCurve: Curves.easeInOut,
+            secondCurve: Curves.easeInOut,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OverBudgetCategoriesCard extends StatelessWidget {
+  final List<Category> categories;
+  final String currencySymbol;
+  final bool isExpanded;
+  final VoidCallback onToggle;
+
+  const _OverBudgetCategoriesCard({
+    required this.categories,
+    required this.currencySymbol,
+    required this.isExpanded,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final totalOverBudget = categories.fold<double>(
+      0.0,
+      (sum, category) => sum + (category.spent - category.allocated),
+    );
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onToggle,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Over-budget categories',
+                        style: theme.textTheme.titleMedium,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Flexible(
+                      child: Text(
+                        '+ ${Format.money(totalOverBudget, symbol: currencySymbol)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          color: colorScheme.error,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    AnimatedRotation(
+                      turns: isExpanded ? 0.5 : 0.0,
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOutCubic,
+                      child: Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          AnimatedCrossFade(
+            firstChild: const SizedBox.shrink(),
+            secondChild: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Divider(
+                  height: 1,
+                  color: colorScheme.outlineVariant,
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Column(
+                    children: [
+                      for (var i = 0; i < categories.length; i++) ...[
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '${categories[i].emoji}  ${categories[i].name}',
+                                  style: theme.textTheme.bodyLarge?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                '+ ${Format.money(categories[i].spent - categories[i].allocated, symbol: currencySymbol)}',
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  color: colorScheme.error,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (i != categories.length - 1)
+                          Divider(
+                            height: 1,
+                            color: colorScheme.outlineVariant,
+                            indent: 14,
+                            endIndent: 14,
+                          ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            crossFadeState: isExpanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 180),
+            sizeCurve: Curves.easeOutCubic,
+            firstCurve: Curves.easeInOut,
+            secondCurve: Curves.easeInOut,
+          ),
+        ],
       ),
     );
   }
@@ -712,3 +1168,5 @@ class _QuickActionChip extends StatelessWidget {
 }
 
 enum _CategoryTileAction { edit, delete, cancel }
+
+enum _IncomeTileAction { delete, cancel }
