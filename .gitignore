@@ -29,6 +29,8 @@
 .pub-cache/
 .pub/
 build/
+ads.local.json
+ads.*.local.json
 
 # Android related
 **/android/**/gradle-wrapper.jar

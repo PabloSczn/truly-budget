@@ -1,0 +1,5 @@
+# Copy this file to android/key.properties and replace the placeholder values.
+storePassword=change-me
+keyPassword=change-me
+keyAlias=upload
+storeFile=upload-keystore.jks

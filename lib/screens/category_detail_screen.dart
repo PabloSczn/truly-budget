@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../state/budget_store.dart';
 import '../utils/format.dart';
+import '../widgets/bottom_banner_ad.dart';
 import '../widgets/expenses/add_expense_dialog.dart';
 import '../widgets/expenses/edit_expense_dialog.dart';
 import '../widgets/expenses/move_expense_dialog.dart';
@@ -74,6 +75,7 @@ class CategoryDetailScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: Text('${cat.name} ${cat.emoji}')),
+      bottomNavigationBar: const BottomBannerAd(),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: canEdit
           ? FloatingActionButton(
