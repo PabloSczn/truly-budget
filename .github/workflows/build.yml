@@ -6,7 +6,7 @@ on:
   workflow_dispatch: {}
 
 jobs:
-  build:
+  android:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,48 +27,20 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
-      # Android
-      - name: Build Android AppBundle 🛠️
-        run: |
-          set -euo pipefail
+      - name: Run tests
+        run: flutter test tests
 
-          attempt=1
-          max_attempts=4
-          while [ "$attempt" -le "$max_attempts" ]; do
-            echo "AppBundle build attempt $attempt/$max_attempts"
-            if flutter build appbundle \
-              --build-name "${{ steps.ver.outputs.semver }}" \
-              --build-number "${{ github.run_number }}"; then
-              break
-            fi
-
-            if [ "$attempt" -eq "$max_attempts" ]; then
-              echo "AppBundle build failed after $max_attempts attempts."
-              exit 1
-            fi
-
-            sleep_seconds=$((attempt * 15))
-            echo "Build failed, retrying in ${sleep_seconds}s..."
-            sleep "$sleep_seconds"
-            attempt=$((attempt + 1))
-          done
-
-      - name: Upload Android AppBundle ⬆️
-        uses: actions/upload-artifact@v4
-        with:
-          name: trulybudget-aab-${{ steps.ver.outputs.semver }}+${{ github.run_number }}
-          path: build/app/outputs/bundle/release/app-release.aab
-
-      # APK
-      - name: Build Android debug APK 🛠️
+      - name: Build no-ads Android debug APK 🛠️
         run: |
           flutter build apk \
             --debug \
             --build-name "${{ steps.ver.outputs.semver }}" \
-            --build-number "${{ github.run_number }}"
+            --build-number "${{ github.run_number }}" \
+            --dart-define=ENABLE_ADS=false
 
       - name: Upload debug APK ⬆️
         uses: actions/upload-artifact@v4
         with:
-          name: trulybudget-apk-debug-${{ steps.ver.outputs.semver }}+${{ github.run_number }}
+          name: trulybudget-apk-debug-no-ads-${{ steps.ver.outputs.semver }}+${{ github.run_number }}
           path: build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
