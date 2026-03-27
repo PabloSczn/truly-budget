@@ -714,7 +714,7 @@ class _MonthScreenState extends State<MonthScreen> {
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 18.0),
                 child: Text(
-                    'Nothing here yet. Add an expense or category to get started.'),
+                    'Nothing here yet. Add your income and allocate your funds to start taking control of your finances!'),
               ),
             ...b.categories.map((c) => CategoryCard(
                   category: c,
