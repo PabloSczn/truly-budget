@@ -23,7 +23,8 @@ class _EmojiSheetState extends State<_EmojiSheet> {
     // Common
     '😀', '😄', '😁', '🥹', '😊', '😉', '😍', '😘', '😎', '🤩', '🥳', '🤔',
     '😴', '🤯', '😭', '😡', '👍', '👎', '👏', '🙏', '💪',
-    '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💡', '🔥', '✨', '⭐',
+    '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💌', '💡', '🔥', '✨',
+    '⭐',
     '🌟', '⚡', '☀️', '🌧️', '❄️', '🌈',
     // Food
     '🍔', '🍟', '🌮', '🍕', '🍝', '🍣', '🍱', '🍜', '🥗', '🍎', '🍌', '🍓',
@@ -35,7 +36,7 @@ class _EmojiSheetState extends State<_EmojiSheet> {
     // Activities
     '⚽', '🏀', '🎾', '🎮', '🎲', '🎵', '🎧', '🎸', '🎬', '📚',
     // Objects
-    '🧹', '🛠️', '🧰', '🧼', '🧴', '🪥', '📦', '🎁', '🗂️',
+    '🧹', '🛠️', '🧰', '🧼', '🧴', '🪥', '🦷', '📱', '📅', '📦', '🎁', '🗂️',
   ];
 
   static final Map<String, List<String>> emojiTags = {
@@ -72,6 +73,7 @@ class _EmojiSheetState extends State<_EmojiSheet> {
     '🖤': ['heart', 'love', 'black'],
     '🤍': ['heart', 'love', 'white'],
     '🤎': ['heart', 'love', 'brown'],
+    '💌': ['love letter', 'letter', 'mail', 'romance', 'envelope', 'heart'],
     '💡': ['idea', 'light', 'bulb'],
     '🔥': ['fire', 'hot', 'flame'],
     '✨': ['sparkles', 'shine', 'magic'],
@@ -146,6 +148,9 @@ class _EmojiSheetState extends State<_EmojiSheet> {
     '🧼': ['soap', 'clean'],
     '🧴': ['bottle', 'clean', 'care'],
     '🪥': ['toothbrush', 'teeth'],
+    '🦷': ['tooth', 'teeth', 'dentist', 'dental'],
+    '📱': ['phone', 'mobile', 'call', 'telephone'],
+    '📅': ['calendar', 'date', 'schedule', 'appointment'],
     '📦': ['package', 'parcel', 'box'],
     '🎁': ['gift', 'present'],
     '🗂️': ['organize', 'folder', 'files'],
