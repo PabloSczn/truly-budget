@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../state/budget_store.dart';
+import '../utils/year_picker_options.dart';
 
 class MonthSelectionScreen extends StatefulWidget {
   const MonthSelectionScreen({super.key});
@@ -30,7 +31,11 @@ class _MonthSelectionScreenState extends State<MonthSelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final nowYear = DateTime.now().year;
+    final store = context.watch<BudgetStore>();
+    final selectableYears = YearPickerOptions.fromMonthKeys(
+      store.monthKeysDesc,
+      selectedYear: year,
+    );
 
     final baseOutlined = OutlinedButton.styleFrom(
       minimumSize: const Size.fromHeight(48),
@@ -54,7 +59,6 @@ class _MonthSelectionScreenState extends State<MonthSelectionScreen> {
         minimum: const EdgeInsets.fromLTRB(16, 8, 16, 16),
         child: FilledButton.icon(
           onPressed: () {
-            final store = context.read<BudgetStore>();
             store.selectMonth(year, month);
             Navigator.of(context).popUntil((route) => route.isFirst);
           },
@@ -78,8 +82,9 @@ class _MonthSelectionScreenState extends State<MonthSelectionScreen> {
                       const SizedBox(width: 8),
                       DropdownButton<int>(
                         value: year,
+                        menuMaxHeight: 320,
                         items: [
-                          for (int y = nowYear - 3; y <= nowYear + 3; y++)
+                          for (final y in selectableYears)
                             DropdownMenuItem(
                                 value: y, child: Text(y.toString()))
                         ],
