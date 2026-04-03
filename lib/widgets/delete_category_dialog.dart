@@ -64,7 +64,7 @@ class _DeleteCategoryDialogState extends State<DeleteCategoryDialog> {
           children: [
             Text(
               _hasExpenses
-                  ? 'This category has $expenseCount expense${expenseCount == 1 ? '' : 's'} worth ${Format.money(expenseTotal, symbol: widget.currencySymbol)}.'
+                  ? 'This category has $expenseCount expense${expenseCount == 1 ? '' : 's'} worth ${Format.money(expenseTotal, symbol: widget.currencySymbol)}'
                   : 'This category has no expenses. Its limit and history on this screen will be removed.',
             ),
             if (_hasExpenses) ...[

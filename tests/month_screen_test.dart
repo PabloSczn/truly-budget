@@ -128,5 +128,61 @@ void main() {
         await tester.pump(const Duration(milliseconds: 300));
       },
     );
+
+    testWidgets(
+      'renamed uncategorized category is not treated as over-budget',
+      (tester) async {
+        final store = BudgetStore();
+        store.createMonth(2026, 3, select: true);
+
+        final uncategorized = store.ensureUncategorizedForCurrentBudget();
+        store.addExpense(uncategorized.id, 'Coffee', 4.5);
+        store.updateCategory(uncategorized.id, name: 'Floating expenses');
+        await tester.pump(const Duration(milliseconds: 300));
+
+        await tester.pumpWidget(buildTestApp(store, const MonthScreen()));
+
+        expect(find.text('Over-budget categories'), findsNothing);
+        expect(find.text('Floating expenses'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'selecting no category still adds expenses to the renamed uncategorized category',
+      (tester) async {
+        final store = BudgetStore();
+        store.createMonth(2026, 3, select: true);
+
+        final uncategorized = store.ensureUncategorizedForCurrentBudget();
+        store.updateCategory(uncategorized.id, name: 'Floating expenses');
+        await tester.pump(const Duration(milliseconds: 300));
+
+        await tester.pumpWidget(buildTestApp(store, const MonthScreen()));
+
+        await tester.tap(find.byTooltip('Open quick actions'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Add expense'));
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byType(TextFormField).first, 'Parking');
+        await tester.enterText(find.byType(TextFormField).at(1), '8');
+        await tester.tap(find.widgetWithText(FilledButton, 'Add'));
+        await tester.pumpAndSettle();
+
+        expect(store.currentBudget!.categories, hasLength(1));
+        expect(store.currentBudget!.categories.single.id, uncategorized.id);
+        expect(
+            store.currentBudget!.categories.single.name, 'Floating expenses');
+        expect(
+          store.isUncategorizedCategory(store.currentBudget!.categories.single),
+          isTrue,
+        );
+        expect(store.currentBudget!.categories.single.expenses, hasLength(1));
+        expect(
+          store.currentBudget!.categories.single.expenses.single.note,
+          'Parking',
+        );
+      },
+    );
   });
 }

@@ -63,7 +63,7 @@ void main() {
         date: aprilExpenseDate,
         emoji: '🚆',
       );
-
+      // This must NOT change
       expect(
         store.exportData(),
         equals({

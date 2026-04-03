@@ -4,12 +4,14 @@ import '../utils/format.dart';
 
 class CategoryCard extends StatelessWidget {
   final Category category;
+  final bool isUncategorized;
   final String currencySymbol;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
   const CategoryCard({
     super.key,
     required this.category,
+    required this.isUncategorized,
     required this.currencySymbol,
     this.onTap,
     this.onLongPress,
@@ -20,8 +22,6 @@ class CategoryCard extends StatelessWidget {
     final double spent = category.spent;
     final double allocated = category.allocated;
     final double remaining = category.remaining;
-    final bool isUncategorized =
-        category.name.trim().toLowerCase() == 'uncategorized';
 
     // clamp() -> num, so call .toDouble()
     final double ratio =
