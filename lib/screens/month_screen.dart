@@ -85,23 +85,6 @@ class _MonthScreenState extends State<MonthScreen> {
     }
   }
 
-  String _resolveCategoryForExpense(BudgetStore store, String? categoryId) {
-    final b = store.currentBudget!;
-    if (categoryId != null && b.categories.any((c) => c.id == categoryId)) {
-      return categoryId;
-    }
-
-    Category? uncategorized;
-    for (final c in b.categories) {
-      if (c.name.trim().toLowerCase() == 'uncategorized') {
-        uncategorized = c;
-        break;
-      }
-    }
-
-    return (uncategorized ?? store.addCategory('Uncategorized', '🗂️')).id;
-  }
-
   Future<void> _showAddExpenseDialog() async {
     final store = context.read<BudgetStore>();
     final b = store.currentBudget;
@@ -113,7 +96,7 @@ class _MonthScreenState extends State<MonthScreen> {
     );
     if (!mounted || result == null) return;
 
-    final categoryId = _resolveCategoryForExpense(store, result.categoryId);
+    final categoryId = store.resolveExpenseCategoryId(result.categoryId);
     store.addExpense(
       categoryId,
       result.note,
@@ -311,6 +294,10 @@ class _MonthScreenState extends State<MonthScreen> {
         initialName: category.name,
         initialEmoji: category.emoji,
         initialAllocated: category.allocated,
+        allowEmojiEditing:
+            !context.read<BudgetStore>().isUncategorizedCategory(category),
+        showLimitField:
+            !context.read<BudgetStore>().isUncategorizedCategory(category),
       ),
     );
 
@@ -484,7 +471,7 @@ class _MonthScreenState extends State<MonthScreen> {
     final overallDebt = store.debtForBudget(b);
     final overCats = b.categories
         .where((c) =>
-            c.name.trim().toLowerCase() != 'uncategorized' &&
+            !store.isUncategorizedCategory(c, budget: b) &&
             c.spent > c.allocated)
         .toList();
     final statusColor = _statusColor(b.totalIncome, effectiveExpenses);
@@ -718,6 +705,7 @@ class _MonthScreenState extends State<MonthScreen> {
               ),
             ...b.categories.map((c) => CategoryCard(
                   category: c,
+                  isUncategorized: store.isUncategorizedCategory(c, budget: b),
                   currencySymbol: store.currency.symbol,
                   onTap: () {
                     Navigator.of(context).push(

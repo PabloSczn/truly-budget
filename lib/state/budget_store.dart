@@ -25,8 +25,14 @@ enum CarryForwardDebtResult {
 }
 
 class BudgetStore extends ChangeNotifier {
+  static const String uncategorizedName = 'Uncategorized';
+  static const String uncategorizedEmoji = '🗂️';
+  static const String _uncategorizedCategoryIdsPrefsKey =
+      'uncategorized_category_ids';
+
   final Map<String, MonthBudget> _budgets = {}; // key: YYYY-MM
   final Set<String> _dismissedTipIds = <String>{};
+  final Map<String, String> _uncategorizedCategoryIds = <String, String>{};
   String? selectedYMKey;
   Currency currency = const Currency('GBP', '£');
   ThemeMode themeMode = ThemeMode.system;
@@ -34,6 +40,7 @@ class BudgetStore extends ChangeNotifier {
 
   // File persistence
   File? _dbFile;
+  SharedPreferences? _prefs;
   Timer? _saveDebounce;
 
   UnmodifiableMapView<String, MonthBudget> get budgets =>
@@ -124,17 +131,123 @@ class BudgetStore extends ChangeNotifier {
     }
   }
 
-  Category _ensureUncategorized(MonthBudget b) {
-    for (final c in b.categories) {
-      if (c.name.trim().toLowerCase() == 'uncategorized') return c;
+  bool _isUncategorizedName(String name) =>
+      name.trim().toLowerCase() == uncategorizedName.toLowerCase();
+
+  String _monthKeyForBudget(MonthBudget budget) =>
+      _keyOf(budget.year, budget.month);
+
+  Category? _categoryById(MonthBudget budget, String categoryId) {
+    for (final category in budget.categories) {
+      if (category.id == categoryId) return category;
     }
+    return null;
+  }
+
+  Map<String, String> _decodeUncategorizedCategoryIds(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return <String, String>{};
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) return <String, String>{};
+      final ids = <String, String>{};
+      decoded.forEach((key, value) {
+        if (value is String && value.isNotEmpty) {
+          ids[key] = value;
+        }
+      });
+      return ids;
+    } catch (_) {
+      return <String, String>{};
+    }
+  }
+
+  Future<void> _saveUncategorizedCategoryIds() async {
+    final prefs = _prefs;
+    if (prefs == null) return;
+    if (_uncategorizedCategoryIds.isEmpty) {
+      await prefs.remove(_uncategorizedCategoryIdsPrefsKey);
+      return;
+    }
+    await prefs.setString(
+      _uncategorizedCategoryIdsPrefsKey,
+      jsonEncode(_uncategorizedCategoryIds),
+    );
+  }
+
+  void _rememberUncategorizedCategory(MonthBudget budget, String categoryId) {
+    final monthKey = _monthKeyForBudget(budget);
+    if (_uncategorizedCategoryIds[monthKey] == categoryId) return;
+    _uncategorizedCategoryIds[monthKey] = categoryId;
+    _saveUncategorizedCategoryIds();
+  }
+
+  void _forgetUncategorizedCategory(
+    MonthBudget budget, {
+    String? expectedCategoryId,
+  }) {
+    final monthKey = _monthKeyForBudget(budget);
+    final rememberedId = _uncategorizedCategoryIds[monthKey];
+    if (rememberedId == null) return;
+    if (expectedCategoryId != null && rememberedId != expectedCategoryId) {
+      return;
+    }
+    _uncategorizedCategoryIds.remove(monthKey);
+    _saveUncategorizedCategoryIds();
+  }
+
+  Category? _findUncategorized(MonthBudget budget) {
+    final monthKey = _monthKeyForBudget(budget);
+    final rememberedId = _uncategorizedCategoryIds[monthKey];
+    if (rememberedId != null) {
+      final remembered = _categoryById(budget, rememberedId);
+      if (remembered != null) return remembered;
+      _uncategorizedCategoryIds.remove(monthKey);
+      _saveUncategorizedCategoryIds();
+    }
+
+    for (final category in budget.categories) {
+      if (_isUncategorizedName(category.name)) {
+        _rememberUncategorizedCategory(budget, category.id);
+        return category;
+      }
+    }
+
+    return null;
+  }
+
+  Category _ensureUncategorized(MonthBudget b) {
+    final existing = _findUncategorized(b);
+    if (existing != null) return existing;
+
     final cat = Category(
       id: _rid(),
-      name: 'Uncategorized',
-      emoji: '🗂️',
+      name: uncategorizedName,
+      emoji: uncategorizedEmoji,
     );
     b.categories.add(cat);
+    _rememberUncategorizedCategory(b, cat.id);
     return cat;
+  }
+
+  Category ensureUncategorizedForCurrentBudget() {
+    final budget = currentBudget!;
+    _assertEditable(budget);
+    return _ensureUncategorized(budget);
+  }
+
+  bool isUncategorizedCategory(Category category, {MonthBudget? budget}) {
+    final targetBudget = budget ?? currentBudget;
+    if (targetBudget == null) return _isUncategorizedName(category.name);
+    return _findUncategorized(targetBudget)?.id == category.id;
+  }
+
+  String resolveExpenseCategoryId(String? categoryId) {
+    final budget = currentBudget!;
+    if (categoryId != null &&
+        budget.categories.any((c) => c.id == categoryId)) {
+      return categoryId;
+    }
+    return _ensureUncategorized(budget).id;
   }
 
   void _assertEditable(MonthBudget b) {
@@ -146,6 +259,15 @@ class BudgetStore extends ChangeNotifier {
 
   Future<void> load() async {
     // Prepare file
+    _prefs = await SharedPreferences.getInstance();
+    _uncategorizedCategoryIds
+      ..clear()
+      ..addAll(
+        _decodeUncategorizedCategoryIds(
+          _prefs!.getString(_uncategorizedCategoryIdsPrefsKey),
+        ),
+      );
+
     final dir = await getApplicationDocumentsDirectory();
     _dbFile = File('${dir.path}/budgets.json');
 
@@ -173,7 +295,7 @@ class BudgetStore extends ChangeNotifier {
       }
     } else {
       // Fallback to previous prefs
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = _prefs!;
       final code = prefs.getString('currency_code');
       final savedThemeMode = prefs.getString('theme_mode');
       final ym = prefs.getString('selected_ym');
@@ -207,6 +329,7 @@ class BudgetStore extends ChangeNotifier {
       await _dbFile!.delete();
     }
     await tmp.rename(_dbFile!.path);
+    await _saveUncategorizedCategoryIds();
   }
 
   void _scheduleSave() {
@@ -270,14 +393,17 @@ class BudgetStore extends ChangeNotifier {
     _saveDebounce?.cancel();
     _budgets.clear();
     _dismissedTipIds.clear();
+    _uncategorizedCategoryIds.clear();
     selectedYMKey = null;
     currency = Currencies.list.first;
     themeMode = ThemeMode.system;
 
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = _prefs ?? await SharedPreferences.getInstance();
+    _prefs = prefs;
     await prefs.remove('currency_code');
     await prefs.remove('theme_mode');
     await prefs.remove('selected_ym');
+    await prefs.remove(_uncategorizedCategoryIdsPrefsKey);
 
     if (_dbFile == null) {
       final dir = await getApplicationDocumentsDirectory();
@@ -315,6 +441,8 @@ class BudgetStore extends ChangeNotifier {
   bool deleteMonth(String ymKey) {
     final removed = _budgets.remove(ymKey);
     if (removed == null) return false;
+    _uncategorizedCategoryIds.remove(ymKey);
+    _saveUncategorizedCategoryIds();
     if (selectedYMKey == ymKey) {
       final activeKeys = activeMonthKeysDesc;
       selectedYMKey = activeKeys.isNotEmpty ? activeKeys.first : null;
@@ -404,10 +532,12 @@ class BudgetStore extends ChangeNotifier {
     final b = currentBudget!;
     _assertEditable(b);
     final cat = b.categories.firstWhere((c) => c.id == categoryId);
+    final isUncategorized = isUncategorizedCategory(cat, budget: b);
 
     final nextName = (name ?? cat.name).trim();
-    final nextEmoji = (emoji ?? cat.emoji).trim();
-    final nextAllocated = allocated ?? cat.allocated;
+    final nextEmoji =
+        isUncategorized ? uncategorizedEmoji : (emoji ?? cat.emoji).trim();
+    final nextAllocated = isUncategorized ? 0.0 : (allocated ?? cat.allocated);
 
     if (nextName.isEmpty) {
       throw Exception('Category name cannot be empty.');
@@ -424,7 +554,7 @@ class BudgetStore extends ChangeNotifier {
     _validateTotalAllocated(b, projectedTotalAllocated);
 
     cat.name = nextName;
-    cat.emoji = nextEmoji.isEmpty ? '🗂️' : nextEmoji;
+    cat.emoji = nextEmoji.isEmpty ? uncategorizedEmoji : nextEmoji;
     cat.allocated = nextAllocated;
 
     _scheduleSave();
@@ -442,6 +572,7 @@ class BudgetStore extends ChangeNotifier {
     if (categoryIndex < 0) return;
 
     final category = b.categories[categoryIndex];
+    final isUncategorized = isUncategorizedCategory(category, budget: b);
     if (category.expenses.isNotEmpty && !deleteExpenses) {
       if (moveExpensesToCategoryId == null ||
           moveExpensesToCategoryId == categoryId) {
@@ -458,6 +589,9 @@ class BudgetStore extends ChangeNotifier {
     }
 
     b.categories.removeAt(categoryIndex);
+    if (isUncategorized) {
+      _forgetUncategorizedCategory(b, expectedCategoryId: categoryId);
+    }
     _scheduleSave();
     notifyListeners();
   }
@@ -476,6 +610,7 @@ class BudgetStore extends ChangeNotifier {
     }
     for (final entry in amounts.entries) {
       final cat = b.categories.firstWhere((c) => c.id == entry.key);
+      if (isUncategorizedCategory(cat, budget: b)) continue;
       cat.allocated += entry.value;
     }
     _scheduleSave();
@@ -507,7 +642,9 @@ class BudgetStore extends ChangeNotifier {
     double newTotalAllocated = 0.0;
 
     for (final c in b.categories) {
-      final v = newAllocatedByCategoryId[c.id] ?? c.allocated;
+      final v = isUncategorizedCategory(c, budget: b)
+          ? 0.0
+          : (newAllocatedByCategoryId[c.id] ?? c.allocated);
       if (v.isNaN || v.isInfinite || v < 0) {
         throw Exception('Invalid allocation for "${c.name}".');
       }
@@ -518,7 +655,9 @@ class BudgetStore extends ChangeNotifier {
 
     for (final c in b.categories) {
       if (newAllocatedByCategoryId.containsKey(c.id)) {
-        c.allocated = newAllocatedByCategoryId[c.id]!;
+        c.allocated = isUncategorizedCategory(c, budget: b)
+            ? 0.0
+            : newAllocatedByCategoryId[c.id]!;
       }
     }
 

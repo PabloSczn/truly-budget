@@ -106,5 +106,39 @@ void main() {
         ),
       );
     });
+
+    test('keeps uncategorized behavior after renaming the category', () {
+      final uncategorized = store.ensureUncategorizedForCurrentBudget();
+      store.addExpense(uncategorized.id, 'Coffee', 4.5);
+
+      store.updateCategory(
+        uncategorized.id,
+        name: 'Floating expenses',
+        emoji: '☕',
+        allocated: 25,
+      );
+
+      final updated = store.currentBudget!.categories.single;
+      expect(updated.name, 'Floating expenses');
+      expect(updated.emoji, BudgetStore.uncategorizedEmoji);
+      expect(updated.allocated, 0);
+      expect(store.isUncategorizedCategory(updated), isTrue);
+      expect(store.debtForBudget(store.currentBudget!), 4.5);
+    });
+
+    test('routes no-category expenses to the renamed uncategorized category',
+        () {
+      final uncategorized = store.ensureUncategorizedForCurrentBudget();
+      store.updateCategory(uncategorized.id, name: 'Floating expenses');
+
+      final categoryId = store.resolveExpenseCategoryId(null);
+      store.addExpense(categoryId, 'Parking', 8);
+
+      final updated = store.currentBudget!.categories.single;
+      expect(categoryId, uncategorized.id);
+      expect(updated.name, 'Floating expenses');
+      expect(store.isUncategorizedCategory(updated), isTrue);
+      expect(updated.expenses.single.note, 'Parking');
+    });
   });
 }

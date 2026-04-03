@@ -22,12 +22,16 @@ class EditCategoryDialog extends StatefulWidget {
   final String initialName;
   final String initialEmoji;
   final double initialAllocated;
+  final bool allowEmojiEditing;
+  final bool showLimitField;
 
   const EditCategoryDialog({
     super.key,
     required this.initialName,
     required this.initialEmoji,
     required this.initialAllocated,
+    this.allowEmojiEditing = true,
+    this.showLimitField = true,
   });
 
   @override
@@ -76,10 +80,19 @@ class _EditCategoryDialogState extends State<EditCategoryDialog> {
               controller: _nameCtrl,
               decoration: InputDecoration(
                 labelText: 'Category name',
-                prefixIcon: EmojiPrefixButton(
-                  emoji: _selectedEmoji,
-                  onTap: _pickEmoji,
-                ),
+                prefixIcon: widget.allowEmojiEditing
+                    ? EmojiPrefixButton(
+                        emoji: _selectedEmoji,
+                        onTap: _pickEmoji,
+                      )
+                    : Padding(
+                        padding: const EdgeInsets.only(top: 10),
+                        child: Text(
+                          _selectedEmoji,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 22, height: 1),
+                        ),
+                      ),
                 prefixIconConstraints: const BoxConstraints(
                   minWidth: 44,
                   minHeight: 44,
@@ -90,27 +103,29 @@ class _EditCategoryDialogState extends State<EditCategoryDialog> {
                   ? 'Please enter a name'
                   : null,
             ),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _limitCtrl,
-              keyboardType: const TextInputType.numberWithOptions(
-                signed: false,
-                decimal: true,
+            if (widget.showLimitField) ...[
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _limitCtrl,
+                keyboardType: const TextInputType.numberWithOptions(
+                  signed: false,
+                  decimal: true,
+                ),
+                decoration: moneyAmountInputDecoration(
+                  context,
+                  currencySymbol: currencySymbol,
+                  labelText: 'Category limit',
+                ),
+                validator: (value) {
+                  final amount =
+                      double.tryParse(value?.trim().replaceAll(',', '.') ?? '');
+                  if (amount == null || amount < 0) {
+                    return 'Enter zero or a valid amount';
+                  }
+                  return null;
+                },
               ),
-              decoration: moneyAmountInputDecoration(
-                context,
-                currencySymbol: currencySymbol,
-                labelText: 'Category limit',
-              ),
-              validator: (value) {
-                final amount =
-                    double.tryParse(value?.trim().replaceAll(',', '.') ?? '');
-                if (amount == null || amount < 0) {
-                  return 'Enter zero or a valid amount';
-                }
-                return null;
-              },
-            ),
+            ],
           ],
         ),
       ),
@@ -127,8 +142,9 @@ class _EditCategoryDialogState extends State<EditCategoryDialog> {
               EditCategoryResult(
                 name: _nameCtrl.text.trim(),
                 emoji: _selectedEmoji,
-                allocated:
-                    double.parse(_limitCtrl.text.trim().replaceAll(',', '.')),
+                allocated: widget.showLimitField
+                    ? double.parse(_limitCtrl.text.trim().replaceAll(',', '.'))
+                    : widget.initialAllocated,
               ),
             );
           },

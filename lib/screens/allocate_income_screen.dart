@@ -96,9 +96,6 @@ class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
     return (amount / totalIncome) * 100.0;
   }
 
-  bool _isUncategorizedName(String name) =>
-      name.trim().toLowerCase() == 'uncategorized';
-
   TextEditingController _ensureController(String id, String initialText) {
     return ctrls.putIfAbsent(
         id, () => TextEditingController(text: initialText));
@@ -187,8 +184,9 @@ class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
     final store = context.watch<BudgetStore>();
     final b = store.currentBudget!;
     _totalIncome = b.totalIncome;
-    final allocCategories =
-        b.categories.where((c) => !_isUncategorizedName(c.name)).toList();
+    final allocCategories = b.categories
+        .where((c) => !store.isUncategorizedCategory(c, budget: b))
+        .toList();
 
     for (final c in allocCategories) {
       _ensureDraftForCategory(c.id, c.allocated);
@@ -212,7 +210,7 @@ class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
       try {
         final saveAllocations = Map<String, double>.from(draftAmounts);
         for (final c in b.categories) {
-          if (_isUncategorizedName(c.name)) {
+          if (store.isUncategorizedCategory(c, budget: b)) {
             saveAllocations[c.id] = 0.0;
           }
         }
@@ -361,7 +359,8 @@ class _AllocateIncomeScreenState extends State<AllocateIncomeScreen> {
                             res.emoji,
                           );
 
-                          if (!_isUncategorizedName(newCat.name)) {
+                          if (!store.isUncategorizedCategory(newCat,
+                              budget: b)) {
                             draftAmounts[newCat.id] = 0.0;
 
                             final text = usePercent ? '0' : _fmtAmount(0.0);

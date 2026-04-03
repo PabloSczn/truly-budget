@@ -58,7 +58,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
     final otherCategories = b.categories
         .where((c) => c.id != widget.categoryId)
         .toList(growable: false);
-    final isUncategorized = cat.name.trim().toLowerCase() == 'uncategorized';
+    final isUncategorized = store.isUncategorizedCategory(cat, budget: b);
     final expenseItems = _sortedExpenses(cat.expenses);
 
     final spent = cat.spent;
@@ -78,18 +78,18 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                 ? (
                     _CategoryBudgetTone.healthy,
                     'On track',
-                    'Less than 50% of this category has been spent.',
+                    'Less than 50% of this category has been spent',
                   )
                 : rawRatio <= 0.8
                     ? (
                         _CategoryBudgetTone.warning,
                         'Keep an eye on it',
-                        'Between 51% and 80% of this category is already used.',
+                        'Between 51% and 80% of this category is already used',
                       )
                     : (
                         _CategoryBudgetTone.danger,
                         'Close to the limit',
-                        'More than 80% of this category has been spent.',
+                        'More than 80% of this category has been spent',
                       );
 
     final statusColor = switch (tone) {
