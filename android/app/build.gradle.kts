@@ -54,6 +54,7 @@ android {
     defaultConfig {
         applicationId = "com.pablosanchez.trulybudget"
         minSdk = flutter.minSdkVersion
+        manifestPlaceholders["appLabel"] = "TrulyBudget"
         manifestPlaceholders["admobAppId"] =
             dartDefinesMap()["ADMOB_ANDROID_APP_ID"] ?: defaultAdmobAndroidAppId
         targetSdk = flutter.targetSdkVersion
@@ -73,6 +74,12 @@ android {
     }
 
     buildTypes {
+        debug {
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+            manifestPlaceholders["appLabel"] = "TrulyBudget Dev"
+        }
+
         release {
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")
