@@ -22,4 +22,8 @@ Use Flutter stable with a configured device, emulator, simulator, or browser. Th
 
 ## License
 
-This repository is licensed under PolyForm Strict 1.0.0. That prevents commercial use, redistribution, and modified re-releases of this codebase. It protects the code and assets in this repo, not the budgeting idea by itself.
+This repository is source-available under PolyForm Strict 1.0.0. That prevents commercial use, redistribution, and modified or derivative re-releases of this codebase. It protects the code and assets in this repo, not the budgeting idea by itself.
+
+This repository is public for transparency and reference, but external contributions are not being accepted. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+You can still view and fork this repository on GitHub under GitHub's Terms of Service.
