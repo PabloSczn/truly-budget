@@ -7,6 +7,7 @@ import '../widgets/app_menu_drawer.dart';
 import '../widgets/theme_mode_selector.dart';
 import '../utils/format.dart';
 import '../utils/year_month.dart';
+import '../utils/year_picker_options.dart';
 
 enum _YearMonthTileAction { complete, reopen, delete, cancel }
 
@@ -260,6 +261,10 @@ class _YearOverviewScreenState extends State<YearOverviewScreen> {
   @override
   Widget build(BuildContext context) {
     final store = context.watch<BudgetStore>();
+    final selectableYears = YearPickerOptions.fromMonthKeys(
+      store.monthKeysDesc,
+      selectedYear: year,
+    );
 
     final ymKeys =
         store.monthKeysDesc.where((k) => k.startsWith('$year-')).toList();
@@ -300,10 +305,9 @@ class _YearOverviewScreenState extends State<YearOverviewScreen> {
                   const SizedBox(width: 8),
                   DropdownButton<int>(
                     value: year,
+                    menuMaxHeight: 320,
                     items: [
-                      for (int y = DateTime.now().year - 3;
-                          y <= DateTime.now().year + 3;
-                          y++)
+                      for (final y in selectableYears)
                         DropdownMenuItem(value: y, child: Text(y.toString()))
                     ],
                     onChanged: (v) => setState(() => year = v ?? year),

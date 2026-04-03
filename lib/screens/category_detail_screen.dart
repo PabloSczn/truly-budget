@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/expense.dart';
 import '../state/budget_store.dart';
 import '../utils/format.dart';
 import '../widgets/bottom_banner_ad.dart';
@@ -11,19 +12,54 @@ enum _CategoryBudgetTone { healthy, warning, danger, overBudget }
 
 enum _ExpenseAction { move, delete, cancel }
 
-class CategoryDetailScreen extends StatelessWidget {
+enum _ExpenseDateSortOrder { ascending, descending }
+
+class CategoryDetailScreen extends StatefulWidget {
   final String categoryId;
   const CategoryDetailScreen({super.key, required this.categoryId});
+
+  @override
+  State<CategoryDetailScreen> createState() => _CategoryDetailScreenState();
+}
+
+class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
+  bool _showExpenseDates = false;
+  _ExpenseDateSortOrder _expenseSortOrder = _ExpenseDateSortOrder.ascending;
+
+  List<({int index, Expense expense})> _sortedExpenses(List<Expense> expenses) {
+    final indexedExpenses = List.generate(
+      expenses.length,
+      (index) => (index: index, expense: expenses[index]),
+      growable: false,
+    );
+
+    indexedExpenses.sort((a, b) {
+      final comparison = a.expense.date.compareTo(b.expense.date);
+      if (comparison != 0) {
+        return _expenseSortOrder == _ExpenseDateSortOrder.ascending
+            ? comparison
+            : -comparison;
+      }
+
+      return _expenseSortOrder == _ExpenseDateSortOrder.ascending
+          ? a.index.compareTo(b.index)
+          : b.index.compareTo(a.index);
+    });
+
+    return indexedExpenses;
+  }
 
   @override
   Widget build(BuildContext context) {
     final store = context.watch<BudgetStore>();
     final b = store.currentBudget!;
     final canEdit = !b.isCompleted;
-    final cat = b.categories.firstWhere((c) => c.id == categoryId);
-    final otherCategories =
-        b.categories.where((c) => c.id != categoryId).toList(growable: false);
+    final cat = b.categories.firstWhere((c) => c.id == widget.categoryId);
+    final otherCategories = b.categories
+        .where((c) => c.id != widget.categoryId)
+        .toList(growable: false);
     final isUncategorized = cat.name.trim().toLowerCase() == 'uncategorized';
+    final expenseItems = _sortedExpenses(cat.expenses);
 
     final spent = cat.spent;
     final allocated = cat.allocated;
@@ -83,7 +119,8 @@ class CategoryDetailScreen extends StatelessWidget {
               onPressed: () async {
                 await showDialog(
                   context: context,
-                  builder: (_) => AddExpenseDialog(categoryId: categoryId),
+                  builder: (_) =>
+                      AddExpenseDialog(categoryId: widget.categoryId),
                 );
               },
               child: const Icon(Icons.add),
@@ -189,16 +226,75 @@ class CategoryDetailScreen extends StatelessWidget {
               ),
           ],
           const SizedBox(height: 16),
-          Text('Expenses', style: theme.textTheme.titleMedium),
+          Row(
+            children: [
+              Text('Expenses', style: theme.textTheme.titleMedium),
+              const Spacer(),
+              SizedBox.square(
+                dimension: 32,
+                child: IconButton(
+                  tooltip: _showExpenseDates ? 'Hide dates' : 'Show dates',
+                  onPressed: cat.expenses.isEmpty
+                      ? null
+                      : () => setState(() {
+                            _showExpenseDates = !_showExpenseDates;
+                          }),
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                  iconSize: 18,
+                  icon: Icon(
+                    _showExpenseDates
+                        ? Icons.event_available_outlined
+                        : Icons.event_outlined,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              SizedBox.square(
+                dimension: 32,
+                child: IconButton(
+                  tooltip: _expenseSortOrder == _ExpenseDateSortOrder.ascending
+                      ? 'Sort newest first'
+                      : 'Sort oldest first',
+                  onPressed: cat.expenses.length < 2
+                      ? null
+                      : () => setState(() {
+                            _expenseSortOrder = _expenseSortOrder ==
+                                    _ExpenseDateSortOrder.ascending
+                                ? _ExpenseDateSortOrder.descending
+                                : _ExpenseDateSortOrder.ascending;
+                          }),
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                  iconSize: 18,
+                  icon: Icon(
+                    _expenseSortOrder == _ExpenseDateSortOrder.ascending
+                        ? Icons.arrow_upward_rounded
+                        : Icons.arrow_downward_rounded,
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 8),
           Expanded(
             child: ListView.builder(
-              itemCount: cat.expenses.length,
+              itemCount: expenseItems.length,
               itemBuilder: (_, i) {
-                final e = cat.expenses[i];
+                final item = expenseItems[i];
+                final e = item.expense;
+                final expenseIndex = item.index;
                 return ListTile(
                   leading: Text(e.emoji, style: const TextStyle(fontSize: 20)),
                   title: Text(e.note),
+                  subtitle: _showExpenseDates
+                      ? Text(
+                          Format.dayMonth(e.date),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        )
+                      : null,
                   trailing: Text(
                       Format.money(e.amount, symbol: store.currency.symbol)),
                   onTap: () async {
@@ -215,7 +311,7 @@ class CategoryDetailScreen extends StatelessWidget {
                     );
                     if (!context.mounted || edited == null) return;
                     final (newNote, newAmount, newEmoji) = edited;
-                    store.updateExpense(categoryId, i,
+                    store.updateExpense(widget.categoryId, expenseIndex,
                         note: newNote, amount: newAmount, emoji: newEmoji);
                     messenger.showSnackBar(
                         const SnackBar(content: Text('Expense updated')));
@@ -280,7 +376,11 @@ class CategoryDetailScreen extends StatelessWidget {
                       );
                       if (!context.mounted || targetCategoryId == null) return;
 
-                      store.moveExpense(categoryId, i, targetCategoryId);
+                      store.moveExpense(
+                        widget.categoryId,
+                        expenseIndex,
+                        targetCategoryId,
+                      );
                       final movedTo = otherCategories.firstWhere(
                         (category) => category.id == targetCategoryId,
                       );
@@ -315,7 +415,7 @@ class CategoryDetailScreen extends StatelessWidget {
                       ),
                     );
                     if (!context.mounted || confirm != true) return;
-                    store.removeExpense(categoryId, i);
+                    store.removeExpense(widget.categoryId, expenseIndex);
                     messenger.showSnackBar(
                         const SnackBar(content: Text('Expense deleted')));
                   },

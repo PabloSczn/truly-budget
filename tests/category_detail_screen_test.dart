@@ -46,4 +46,52 @@ void main() {
     expect(find.text('Milk'), findsNothing);
     expect(find.text('Expense moved to Dining'), findsOneWidget);
   });
+
+  testWidgets('expenses can show dates and sort by date', (tester) async {
+    final store = BudgetStore();
+    store.createMonth(2026, 4, select: true);
+    final groceries = store.addCategory('Groceries', '🛒');
+
+    store.addExpense(groceries.id, 'Recent expense', 18);
+    store.updateExpense(
+      groceries.id,
+      0,
+      date: DateTime(2026, 4, 9, 18, 30),
+    );
+
+    store.addExpense(groceries.id, 'Older expense', 7);
+    store.updateExpense(
+      groceries.id,
+      1,
+      date: DateTime(2026, 4, 6, 9, 15),
+    );
+
+    await tester.pumpWidget(
+      buildTestApp(
+        store,
+        CategoryDetailScreen(categoryId: groceries.id),
+      ),
+    );
+
+    expect(
+      tester.getTopLeft(find.text('Older expense')).dy,
+      lessThan(tester.getTopLeft(find.text('Recent expense')).dy),
+    );
+    expect(find.text('6 April'), findsNothing);
+    expect(find.text('9 April'), findsNothing);
+
+    await tester.tap(find.byTooltip('Show dates'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('6 April'), findsOneWidget);
+    expect(find.text('9 April'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Sort newest first'));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getTopLeft(find.text('Recent expense')).dy,
+      lessThan(tester.getTopLeft(find.text('Older expense')).dy),
+    );
+  });
 }
