@@ -66,6 +66,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
     final remaining = cat.remaining;
     final rawRatio = allocated > 0 ? spent / allocated : 0.0;
     final ratio = rawRatio.clamp(0.0, 1.0);
+    final isFullySpent = allocated > 0 && remaining.abs() <= 1e-6;
 
     final (_CategoryBudgetTone tone, String statusTitle, String statusBody) =
         rawRatio > 1.0
@@ -148,7 +149,18 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
             const SizedBox(height: 10),
           ],
           if (!isUncategorized) ...[
-            Text('Allocated vs Spent', style: theme.textTheme.titleMedium),
+            Row(
+              children: [
+                Text('Allocated vs Spent', style: theme.textTheme.titleMedium),
+                const Spacer(),
+                Text(
+                  'Left: ${Format.money(remaining.clamp(0, double.infinity), symbol: store.currency.symbol)}',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 8),
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
@@ -170,58 +182,60 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                color: statusBackground,
-                border: Border.all(
-                  color: statusColor.withValues(alpha: 0.18),
+            if (!isFullySpent)
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  color: statusBackground,
+                  border: Border.all(
+                    color: statusColor.withValues(alpha: 0.18),
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(statusIcon, color: statusColor, size: 18),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            statusTitle,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: colorScheme.onSurface,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            statusBody,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                              height: 1.25,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: statusColor.withValues(alpha: 0.14),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(statusIcon, color: statusColor, size: 18),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          statusTitle,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: colorScheme.onSurface,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          statusBody,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                            height: 1.25,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
             if (remaining <= 0)
               Padding(
                 padding: const EdgeInsets.only(top: 12.0),
-                child: Text('No more money is available for this category.',
+                child: Text('This expense category is full.',
                     style: TextStyle(color: Colors.red.shade600)),
               ),
           ],

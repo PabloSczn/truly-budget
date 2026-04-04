@@ -77,7 +77,9 @@ class CategoryCard extends StatelessWidget {
                   Text('Spent: ${Format.money(spent, symbol: currencySymbol)}'),
                   if (!isUncategorized)
                     Text(
-                        'Left: ${Format.money(remaining.clamp(0, double.infinity), symbol: currencySymbol)}'),
+                      'Left: ${Format.money(remaining.clamp(0, double.infinity), symbol: currencySymbol)}',
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
                 ],
               )
             ],
