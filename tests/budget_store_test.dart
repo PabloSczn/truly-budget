@@ -1,4 +1,8 @@
+import 'dart:convert';
+
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:truly_budget/models/currency.dart';
 import 'package:truly_budget/state/budget_store.dart';
 
 void main() {
@@ -139,6 +143,90 @@ void main() {
       expect(updated.name, 'Floating expenses');
       expect(store.isUncategorizedCategory(updated), isTrue);
       expect(updated.expenses.single.note, 'Parking');
+    });
+  });
+
+  group('BudgetStore JSON import', () {
+    late BudgetStore store;
+
+    setUp(() {
+      store = BudgetStore();
+    });
+
+    test('only flags populated overlapping months for overwrite confirmation',
+        () {
+      store.createMonth(2026, 3);
+      store.createMonth(2026, 4, select: true);
+      store.addIncome('Salary', 1200);
+
+      final importedStore = BudgetStore()
+        ..createMonth(2026, 3, select: true)
+        ..createMonth(2026, 4, select: true)
+        ..addIncome('Replacement income', 800);
+
+      final preview = store.prepareImportJson(
+        jsonEncode(importedStore.exportData()),
+      );
+
+      expect(preview.overwrittenMonthKeys, equals(['2026-04']));
+    });
+
+    test('replaces imported months and keeps unrelated existing months',
+        () async {
+      store.dismissTip('current-tip');
+      store.currency = const Currency('GBP', '£');
+      store.themeMode = ThemeMode.light;
+
+      store.createMonth(2026, 4, select: true);
+      store.addIncome('Old salary', 100);
+      final groceries = store.addCategory('Groceries', '🛒', allocated: 40);
+      store.addExpense(groceries.id, 'Bread', 10);
+
+      store.createMonth(2026, 5, select: true);
+      store.addCategory('Utilities', '💡', allocated: 30);
+
+      final importedStore = BudgetStore()
+        ..dismissTip('welcome-banner')
+        ..currency = const Currency('USD', '\$')
+        ..themeMode = ThemeMode.dark;
+
+      importedStore.createMonth(2026, 4, select: true);
+      importedStore.addIncome('New salary', 250);
+      final rent = importedStore.addCategory('Rent', '🏠', allocated: 150);
+      importedStore.addExpense(rent.id, 'April rent', 150);
+
+      importedStore.createMonth(2026, 6, select: true);
+      importedStore.addCategory('Travel', '✈️', allocated: 75);
+
+      final preview = store.prepareImportJson(
+        jsonEncode(importedStore.exportData()),
+      );
+
+      expect(preview.overwrittenMonthKeys, equals(['2026-04']));
+
+      await store.importPreparedData(preview);
+
+      expect(store.currency.code, 'USD');
+      expect(store.themeMode, ThemeMode.dark);
+      expect(store.isTipDismissed('current-tip'), isTrue);
+      expect(store.isTipDismissed('welcome-banner'), isTrue);
+      expect(store.selectedYMKey, '2026-06');
+      expect(store.monthKeysDesc, equals(['2026-06', '2026-05', '2026-04']));
+
+      final aprilBudget = store.budgets['2026-04']!;
+      expect(aprilBudget.incomes, hasLength(1));
+      expect(aprilBudget.incomes.single.source, 'New salary');
+      expect(aprilBudget.categories, hasLength(1));
+      expect(aprilBudget.categories.single.name, 'Rent');
+      expect(aprilBudget.categories.single.expenses.single.note, 'April rent');
+
+      final mayBudget = store.budgets['2026-05']!;
+      expect(mayBudget.categories, hasLength(1));
+      expect(mayBudget.categories.single.name, 'Utilities');
+
+      final juneBudget = store.budgets['2026-06']!;
+      expect(juneBudget.categories, hasLength(1));
+      expect(juneBudget.categories.single.name, 'Travel');
     });
   });
 }

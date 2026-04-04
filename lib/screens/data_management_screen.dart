@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -166,6 +167,75 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
     });
   }
 
+  Future<bool> _confirmImportOverwrite(List<String> monthKeys) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => _ImportOverwriteDialog(monthKeys: monthKeys),
+    );
+    return confirm ?? false;
+  }
+
+  String _importSuccessMessage(BudgetImportPreview preview) {
+    final importedCount = preview.importedMonthCount;
+    final overwrittenCount = preview.overwrittenMonthKeys.length;
+
+    if (importedCount == 0) {
+      return 'JSON backup imported. No month budgets were added.';
+    }
+
+    final importedLabel =
+        '$importedCount month budget${importedCount == 1 ? '' : 's'}';
+    if (overwrittenCount == 0) {
+      return 'Imported $importedLabel from JSON.';
+    }
+
+    final overwrittenLabel =
+        '$overwrittenCount existing month${overwrittenCount == 1 ? '' : 's'}';
+    return 'Imported $importedLabel and replaced $overwrittenLabel.';
+  }
+
+  Future<void> _importJsonBackup() async {
+    if (_isBusy) return;
+
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['json'],
+        allowMultiple: false,
+        withData: true,
+      );
+      if (!mounted || result == null || result.xFiles.isEmpty) return;
+
+      final pickedFile = result.xFiles.single;
+      final rawJson = await pickedFile.readAsString();
+      if (!mounted) return;
+
+      final store = context.read<BudgetStore>();
+      final preview = store.prepareImportJson(rawJson);
+
+      if (preview.overwrittenMonthKeys.isNotEmpty) {
+        final confirmed =
+            await _confirmImportOverwrite(preview.overwrittenMonthKeys);
+        if (!mounted || !confirmed) return;
+      }
+
+      await _runBusyTask('Importing ${pickedFile.name}...', () async {
+        final messenger = ScaffoldMessenger.of(context);
+        await store.importPreparedData(preview);
+        if (!mounted) return;
+        messenger.showSnackBar(
+          SnackBar(content: Text(_importSuccessMessage(preview))),
+        );
+      });
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_messageFromError(error))),
+        );
+      }
+    }
+  }
+
   Future<bool> _confirmReset(BudgetStore store) async {
     final monthCount = store.budgets.length;
     final confirm = await showDialog<bool>(
@@ -229,7 +299,7 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Create shareable exports for a month or a whole year, download a full backup of your raw data, or reset the app completely.',
+                      'Create shareable exports for a month or a whole year, download a full backup of your raw data, import a JSON backup, or reset the app completely.',
                     ),
                     if (_isBusy) ...[
                       const SizedBox(height: 16),
@@ -350,13 +420,38 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Creates a ZIP file with the raw JSON backup of everything stored in the app so you can save it to Drive or another service.',
+                      'Creates a ZIP file with the raw JSON backup of everything stored in the app.',
                     ),
                     const SizedBox(height: 16),
                     FilledButton.icon(
                       onPressed: _isBusy ? null : _exportBackup,
                       icon: const Icon(Icons.archive_outlined),
                       label: const Text('Create ZIP backup'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Import JSON data',
+                      style: theme.textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Imports a raw TrulyBudget JSON and merges its months into the app. If the file would replace any month that already has data, you will be asked to confirm before importing.',
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      onPressed: _isBusy ? null : _importJsonBackup,
+                      icon: const Icon(Icons.file_upload_outlined),
+                      label: const Text('Import JSON data'),
                     ),
                   ],
                 ),
@@ -492,6 +587,84 @@ class _ExportButtons extends StatelessWidget {
             icon: Icon(format.icon),
             label: Text(format.label),
           ),
+      ],
+    );
+  }
+}
+
+class _ImportOverwriteDialog extends StatelessWidget {
+  final List<String> monthKeys;
+
+  const _ImportOverwriteDialog({required this.monthKeys});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final sortedMonthKeys = monthKeys.toList()..sort((a, b) => b.compareTo(a));
+    final monthCount = sortedMonthKeys.length;
+
+    return AlertDialog(
+      scrollable: true,
+      title: const Text('Replace existing month data?'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Importing this JSON will override the current data for $monthCount month budget${monthCount == 1 ? '' : 's'}.',
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Affected months',
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var index = 0;
+                    index < sortedMonthKeys.length;
+                    index++) ...[
+                  if (index > 0)
+                    Divider(
+                      height: 16,
+                      color: colorScheme.outlineVariant,
+                    ),
+                  Text(YearMonth.labelFromKey(sortedMonthKeys[index])),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'This cannot be undone.',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: Colors.red),
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Replace data'),
+        ),
       ],
     );
   }

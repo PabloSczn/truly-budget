@@ -24,6 +24,32 @@ enum CarryForwardDebtResult {
   nextMonthCompleted,
 }
 
+class BudgetImportPreview {
+  BudgetImportPreview({
+    required Map<String, MonthBudget> budgets,
+    required this.currency,
+    required this.themeMode,
+    required this.selectedYMKey,
+    required Iterable<String> dismissedTipIds,
+    required Iterable<String> overwrittenMonthKeys,
+  })  : budgets = Map.unmodifiable(budgets),
+        dismissedTipIds = List.unmodifiable(
+          dismissedTipIds.toSet().toList()..sort(),
+        ),
+        overwrittenMonthKeys = List.unmodifiable(
+          overwrittenMonthKeys.toSet().toList()..sort(),
+        );
+
+  final Map<String, MonthBudget> budgets;
+  final Currency currency;
+  final ThemeMode themeMode;
+  final String? selectedYMKey;
+  final List<String> dismissedTipIds;
+  final List<String> overwrittenMonthKeys;
+
+  int get importedMonthCount => budgets.length;
+}
+
 class BudgetStore extends ChangeNotifier {
   static const String uncategorizedName = 'Uncategorized';
   static const String uncategorizedEmoji = '🗂️';
@@ -341,6 +367,111 @@ class BudgetStore extends ChangeNotifier {
   }
 
   Map<String, dynamic> exportData() => _toJson();
+
+  bool _monthHasStoredData(MonthBudget budget) {
+    return budget.incomes.isNotEmpty ||
+        budget.categories.isNotEmpty ||
+        budget.isCompleted ||
+        (budget.carriedDebtToKey ?? '').isNotEmpty ||
+        budget.carriedDebtAmount.abs() > 1e-6;
+  }
+
+  Map<String, MonthBudget> _parseImportedBudgets(Object? rawBudgets) {
+    if (rawBudgets is! Map<String, dynamic>) {
+      throw Exception('This file does not include a valid budgets backup.');
+    }
+
+    final budgets = <String, MonthBudget>{};
+    rawBudgets.forEach((rawKey, rawValue) {
+      if (rawValue is! Map<String, dynamic>) {
+        throw Exception('The month "$rawKey" is not valid.');
+      }
+
+      final budget = MonthBudget.fromJson(rawValue);
+      final expectedKey = _keyOf(budget.year, budget.month);
+      if (expectedKey != rawKey) {
+        throw Exception(
+          'The month "$rawKey" does not match its year and month values.',
+        );
+      }
+
+      budgets[rawKey] = budget;
+    });
+    return budgets;
+  }
+
+  void _syncRememberedUncategorizedForBudget(
+    String monthKey,
+    MonthBudget budget,
+  ) {
+    _uncategorizedCategoryIds.remove(monthKey);
+    for (final category in budget.categories) {
+      if (_isUncategorizedName(category.name)) {
+        _uncategorizedCategoryIds[monthKey] = category.id;
+        return;
+      }
+    }
+  }
+
+  BudgetImportPreview prepareImportJson(String rawJson) {
+    if (rawJson.trim().isEmpty) {
+      throw Exception('Choose a JSON file with TrulyBudget data.');
+    }
+
+    final decoded = _decodeImportedJson(rawJson);
+    if (decoded is! Map<String, dynamic>) {
+      throw Exception('This file is not a valid TrulyBudget JSON backup.');
+    }
+
+    final importedBudgets = _parseImportedBudgets(decoded['budgets']);
+    final overwrittenMonthKeys = importedBudgets.keys.where((key) {
+      final existing = _budgets[key];
+      return existing != null && _monthHasStoredData(existing);
+    }).toList()
+      ..sort();
+
+    return BudgetImportPreview(
+      budgets: importedBudgets,
+      currency: Currencies.byCode(decoded['currency_code'] as String? ?? 'GBP'),
+      themeMode: _themeModeFromName(decoded['theme_mode'] as String?),
+      selectedYMKey: decoded['selected_ym'] as String?,
+      dismissedTipIds: (decoded['dismissed_tips'] as List<dynamic>? ?? const [])
+          .whereType<String>(),
+      overwrittenMonthKeys: overwrittenMonthKeys,
+    );
+  }
+
+  Object? _decodeImportedJson(String rawJson) {
+    try {
+      return jsonDecode(rawJson);
+    } on FormatException {
+      throw Exception('This file is not valid JSON.');
+    }
+  }
+
+  Future<void> importPreparedData(BudgetImportPreview preview) async {
+    _saveDebounce?.cancel();
+
+    preview.budgets.forEach((monthKey, budget) {
+      _budgets[monthKey] = budget;
+      _syncRememberedUncategorizedForBudget(monthKey, budget);
+    });
+
+    currency = preview.currency;
+    themeMode = preview.themeMode;
+    _dismissedTipIds.addAll(preview.dismissedTipIds);
+
+    final importedSelectedMonth = preview.selectedYMKey;
+    if (importedSelectedMonth != null &&
+        _budgets.containsKey(importedSelectedMonth)) {
+      selectedYMKey = importedSelectedMonth;
+    } else if (selectedYMKey != null && !_budgets.containsKey(selectedYMKey)) {
+      selectedYMKey = monthKeysDesc.isEmpty ? null : monthKeysDesc.first;
+    }
+
+    await _save();
+    notifyListeners();
+  }
 
   void changeCurrency(Currency c) {
     currency = c;
