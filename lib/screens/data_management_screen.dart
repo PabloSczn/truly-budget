@@ -440,7 +440,7 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Import JSON data',
+                      'Import data',
                       style: theme.textTheme.titleMedium,
                     ),
                     const SizedBox(height: 8),
