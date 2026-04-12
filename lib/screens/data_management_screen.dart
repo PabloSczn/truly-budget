@@ -451,7 +451,7 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
                     FilledButton.icon(
                       onPressed: _isBusy ? null : _importJsonBackup,
                       icon: const Icon(Icons.file_upload_outlined),
-                      label: const Text('Import JSON data'),
+                      label: const Text('Import data'),
                     ),
                   ],
                 ),
