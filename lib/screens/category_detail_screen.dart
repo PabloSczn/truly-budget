@@ -293,6 +293,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
           const SizedBox(height: 8),
           Expanded(
             child: ListView.builder(
+              padding: EdgeInsets.only(bottom: canEdit ? 95 : 15),
               itemCount: expenseItems.length,
               itemBuilder: (_, i) {
                 final item = expenseItems[i];
