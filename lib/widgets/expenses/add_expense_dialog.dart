@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../state/budget_store.dart';
-import '../emoji_prefix_button.dart';
 import '../emoji_selector.dart';
 import '../money_amount_form_field.dart';
+import 'expense_note_form_field.dart';
 
 class AddExpenseDialog extends StatefulWidget {
   final String categoryId;
@@ -14,23 +14,13 @@ class AddExpenseDialog extends StatefulWidget {
 }
 
 class _AddExpenseDialogState extends State<AddExpenseDialog> {
-  final noteCtrl = TextEditingController(text: 'Expense');
+  final noteCtrl = TextEditingController();
   final amountCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  late final FocusNode _noteFocusNode;
   String leadingEmoji = '🧾';
 
   @override
-  void initState() {
-    super.initState();
-    _noteFocusNode = FocusNode()..addListener(_handleNoteFocusChange);
-  }
-
-  @override
   void dispose() {
-    _noteFocusNode
-      ..removeListener(_handleNoteFocusChange)
-      ..dispose();
     noteCtrl.dispose();
     amountCtrl.dispose();
     super.dispose();
@@ -42,23 +32,6 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
     setState(() => leadingEmoji = e);
   }
 
-  void _selectNoteText() {
-    noteCtrl.selection = TextSelection(
-      baseOffset: 0,
-      extentOffset: noteCtrl.text.length,
-    );
-  }
-
-  void _handleNoteFocusChange() {
-    if (!_noteFocusNode.hasFocus || noteCtrl.text != 'Expense') return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_noteFocusNode.hasFocus || noteCtrl.text != 'Expense') {
-        return;
-      }
-      _selectNoteText();
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final currencySymbol = context.watch<BudgetStore>().currency.symbol;
@@ -67,23 +40,10 @@ class _AddExpenseDialogState extends State<AddExpenseDialog> {
       content: Form(
         key: _formKey,
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextFormField(
+          ExpenseNoteFormField(
             controller: noteCtrl,
-            focusNode: _noteFocusNode,
-            onTap: () {
-              if (noteCtrl.text == 'Expense') {
-                _selectNoteText();
-              }
-            },
-            decoration: InputDecoration(
-              labelText: 'What for?',
-              prefixIcon:
-                  EmojiPrefixButton(emoji: leadingEmoji, onTap: _pickEmoji),
-              prefixIconConstraints: const BoxConstraints(
-                  minWidth: 44, minHeight: 44, maxWidth: 52),
-            ),
-            validator: (v) =>
-                (v == null || v.trim().isEmpty) ? 'Please enter a note' : null,
+            emoji: leadingEmoji,
+            onPickEmoji: _pickEmoji,
           ),
           const SizedBox(height: 8),
           MoneyAmountFormField(
