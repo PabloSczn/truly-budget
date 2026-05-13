@@ -942,7 +942,7 @@ class _OverBudgetCategoriesCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        'Over-budget categories',
+                        'Over-budget',
                         style: theme.textTheme.titleMedium,
                       ),
                     ),
