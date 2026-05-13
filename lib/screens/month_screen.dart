@@ -385,7 +385,7 @@ class _MonthScreenState extends State<MonthScreen> {
       builder: (_) => AlertDialog(
         title: const Text('Carry debt forward?'),
         content: Text(
-          'Move ${Format.money(debt, symbol: store.currency.symbol)} to $nextMonthLabel as an expense in Uncategorized.',
+          'Move ${Format.money(debt, symbol: store.currency.symbol)} to $nextMonthLabel as an expense.',
         ),
         actions: [
           TextButton(
