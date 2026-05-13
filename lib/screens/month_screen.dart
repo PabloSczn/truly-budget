@@ -92,6 +92,7 @@ class _MonthScreenState extends State<MonthScreen> {
 
     final result = await showDialog<QuickExpenseInput?>(
       context: context,
+      barrierDismissible: false,
       builder: (_) => QuickAddExpenseDialog(categories: b.categories),
     );
     if (!mounted || result == null) return;

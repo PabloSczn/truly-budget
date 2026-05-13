@@ -12,6 +12,51 @@ void main() {
     );
   }
 
+  testWidgets('add expense dialog keeps typed values after barrier taps',
+      (tester) async {
+    final store = BudgetStore();
+    store.createMonth(2026, 3, select: true);
+    final groceries = store.addCategory('Groceries', '🛒');
+
+    await tester.pumpWidget(
+      buildTestApp(
+        store,
+        CategoryDetailScreen(categoryId: groceries.id),
+      ),
+    );
+
+    await tester.tap(find.byTooltip('Add expense'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextFormField).first, 'Coffee');
+    await tester.enterText(find.byType(TextFormField).at(1), '4.50');
+
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Add expense'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      tester.widget<TextField>(find.byType(TextField).at(0)).controller?.text,
+      'Coffee',
+    );
+    expect(
+      tester.widget<TextField>(find.byType(TextField).at(1)).controller?.text,
+      '4.50',
+    );
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Add'));
+    await tester.pumpAndSettle();
+
+    expect(groceries.expenses.single.note, 'Coffee');
+    expect(groceries.expenses.single.amount, 4.50);
+  });
+
   testWidgets('long pressing an expense can move it to another category',
       (tester) async {
     final store = BudgetStore();

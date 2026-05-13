@@ -166,6 +166,32 @@ void main() {
 
         await tester.enterText(find.byType(TextFormField).first, 'Parking');
         await tester.enterText(find.byType(TextFormField).at(1), '8');
+
+        await tester.tapAt(const Offset(10, 10));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.descendant(
+            of: find.byType(AlertDialog),
+            matching: find.text('Add expense'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          tester
+              .widget<TextField>(find.byType(TextField).at(0))
+              .controller
+              ?.text,
+          'Parking',
+        );
+        expect(
+          tester
+              .widget<TextField>(find.byType(TextField).at(1))
+              .controller
+              ?.text,
+          '8',
+        );
+
         await tester.tap(find.widgetWithText(FilledButton, 'Add'));
         await tester.pumpAndSettle();
 

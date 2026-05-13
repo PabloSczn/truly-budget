@@ -107,6 +107,7 @@ void main() {
     expect(initialNoteTextField.enableSuggestions, isTrue);
     expect(initialNoteTextField.decoration?.hintText, 'Expense');
     expect(initialNoteTextField.onTap, isNotNull);
+    expect(initialNoteTextField.onTapAlwaysCalled, isTrue);
 
     await tester.tap(noteField);
     await tester.pump();
@@ -114,21 +115,23 @@ void main() {
     final focusedNoteTextField = tester.widget<TextField>(noteTextField);
     expect(focusedNoteTextField.controller?.text, isEmpty);
     expect(focusedNoteTextField.onTap, isNotNull);
+    expect(focusedNoteTextField.onTapAlwaysCalled, isTrue);
 
     final editableText =
         tester.widget<EditableText>(find.byType(EditableText).first);
     expect(editableText.controller.text, isEmpty);
     expect(editableText.controller.selection.isCollapsed, isTrue);
 
+    const selectedSuffix = TextSelection(baseOffset: 5, extentOffset: 9);
     focusedNoteTextField.controller?.value = const TextEditingValue(
       text: 'Test name',
-      selection: TextSelection(baseOffset: 5, extentOffset: 9),
+      selection: selectedSuffix,
     );
     focusedNoteTextField.onTap?.call();
     await tester.pump(const Duration(milliseconds: 100));
     expect(
-      focusedNoteTextField.controller?.selection.isCollapsed,
-      isTrue,
+      focusedNoteTextField.controller?.selection,
+      selectedSuffix,
     );
     expect(focusedNoteTextField.controller?.text, 'Test name');
 
@@ -182,6 +185,7 @@ void main() {
     expect(initialNoteTextField.enableSuggestions, isTrue);
     expect(initialNoteTextField.decoration?.hintText, 'Expense');
     expect(initialNoteTextField.onTap, isNotNull);
+    expect(initialNoteTextField.onTapAlwaysCalled, isTrue);
 
     await tester.tap(noteField);
     await tester.pump();
@@ -189,21 +193,23 @@ void main() {
     final focusedNoteTextField = tester.widget<TextField>(noteTextField);
     expect(focusedNoteTextField.controller?.text, isEmpty);
     expect(focusedNoteTextField.onTap, isNotNull);
+    expect(focusedNoteTextField.onTapAlwaysCalled, isTrue);
 
     final editableText =
         tester.widget<EditableText>(find.byType(EditableText).first);
     expect(editableText.controller.text, isEmpty);
     expect(editableText.controller.selection.isCollapsed, isTrue);
 
+    const selectedSuffix = TextSelection(baseOffset: 5, extentOffset: 9);
     focusedNoteTextField.controller?.value = const TextEditingValue(
       text: 'Test name',
-      selection: TextSelection(baseOffset: 5, extentOffset: 9),
+      selection: selectedSuffix,
     );
     focusedNoteTextField.onTap?.call();
     await tester.pump(const Duration(milliseconds: 100));
     expect(
-      focusedNoteTextField.controller?.selection.isCollapsed,
-      isTrue,
+      focusedNoteTextField.controller?.selection,
+      selectedSuffix,
     );
     expect(focusedNoteTextField.controller?.text, 'Test name');
 
