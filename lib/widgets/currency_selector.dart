@@ -46,7 +46,8 @@ class _CurrencySheet extends StatelessWidget {
             for (final c in Currencies.list)
               RadioListTile<String>(
                 value: c.code,
-                title: Text('${c.symbol}  ${c.code}'),
+                title: Text(c.displayName),
+                subtitle: Text('${c.code} - ${c.symbol}'),
               ),
           ],
         ),
