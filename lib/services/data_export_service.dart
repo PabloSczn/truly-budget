@@ -1236,7 +1236,14 @@ class DataExportService {
     final cleaned = value
         .replaceAll(
           RegExp(
-            r'[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]',
+            r'[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}]',
+            unicode: true,
+          ),
+          '',
+        )
+        .replaceAll(
+          RegExp(
+            r'[\u{200D}\u{20E3}\u{FE00}-\u{FE0F}\u{E0020}-\u{E007F}]',
             unicode: true,
           ),
           '',

@@ -16,6 +16,7 @@ import 'add_income_screen.dart';
 import 'allocate_income_screen.dart';
 import 'category_detail_screen.dart';
 import '../widgets/app_menu_drawer.dart';
+import '../widgets/bottom_banner_ad.dart';
 import '../widgets/dismissible_tip_banner.dart';
 
 const _monthSpareTipId = 'month_spare_tip';
@@ -506,6 +507,7 @@ class _MonthScreenState extends State<MonthScreen> {
           ],
         ),
         drawer: const AppMenuDrawer(),
+        bottomNavigationBar: const BottomBannerAd(),
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         floatingActionButton: canEdit
             ? _QuickAddFab(

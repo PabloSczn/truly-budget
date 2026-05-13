@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../widgets/bottom_banner_ad.dart';
+
 class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
 
@@ -59,6 +61,7 @@ class _AboutScreenState extends State<AboutScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('About')),
+      bottomNavigationBar: const BottomBannerAd(),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
