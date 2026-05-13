@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../models/currency.dart';
+
 InputDecoration symbolPrefixedInputDecoration(
   BuildContext context, {
   required String symbol,
@@ -26,10 +28,24 @@ InputDecoration moneyAmountInputDecoration(
   required String currencySymbol,
   String? labelText = 'Amount',
 }) {
-  return symbolPrefixedInputDecoration(
-    context,
-    symbol: currencySymbol,
+  final currency = Currencies.bySymbol(currencySymbol);
+  final colorScheme = Theme.of(context).colorScheme;
+  final symbolStyle = Theme.of(context).textTheme.titleMedium?.copyWith(
+        color: colorScheme.onSurfaceVariant,
+        fontWeight: FontWeight.w600,
+      );
+  const inputSeparator = ' ';
+
+  return InputDecoration(
     labelText: labelText,
+    prefixText: currency?.symbolPosition == CurrencySymbolPosition.afterAmount
+        ? null
+        : '$currencySymbol$inputSeparator',
+    prefixStyle: symbolStyle,
+    suffixText: currency?.symbolPosition == CurrencySymbolPosition.afterAmount
+        ? '$inputSeparator$currencySymbol'
+        : null,
+    suffixStyle: symbolStyle,
   );
 }
 

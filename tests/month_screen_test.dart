@@ -98,7 +98,7 @@ void main() {
         await tester.pumpWidget(buildTestApp(store, const MonthScreen()));
 
         final incomeRecords = find.text('Income records');
-        final overBudgetCategories = find.text('Over-budget categories');
+        final overBudgetCategories = find.text('Over-budget');
 
         expect(incomeRecords, findsOneWidget);
         expect(overBudgetCategories, findsOneWidget);
@@ -142,7 +142,7 @@ void main() {
 
         await tester.pumpWidget(buildTestApp(store, const MonthScreen()));
 
-        expect(find.text('Over-budget categories'), findsNothing);
+        expect(find.text('Over-budget'), findsNothing);
         expect(find.text('Floating expenses'), findsOneWidget);
       },
     );
