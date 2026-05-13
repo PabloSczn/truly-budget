@@ -120,6 +120,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
               onPressed: () async {
                 await showDialog(
                   context: context,
+                  barrierDismissible: false,
                   builder: (_) =>
                       AddExpenseDialog(categoryId: widget.categoryId),
                 );

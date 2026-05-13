@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 InputDecoration symbolPrefixedInputDecoration(
   BuildContext context, {
@@ -93,11 +96,26 @@ class _MoneyAmountFormFieldState extends State<MoneyAmountFormField> {
     });
   }
 
+  Future<void> _showKeyboard() async {
+    try {
+      await SystemChannels.textInput.invokeMethod<void>('TextInput.show');
+    } on Object {
+      // Some test and desktop environments do not attach a text input channel.
+    }
+  }
+
+  void _handleTap() {
+    _focusNode.requestFocus();
+    unawaited(_showKeyboard());
+  }
+
   @override
   Widget build(BuildContext context) {
     return TextFormField(
       controller: widget.controller,
       focusNode: _focusNode,
+      onTap: _handleTap,
+      onTapAlwaysCalled: true,
       keyboardType: const TextInputType.numberWithOptions(
         signed: false,
         decimal: true,

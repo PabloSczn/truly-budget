@@ -106,20 +106,10 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
     return raw.isEmpty ? 'Something went wrong.' : raw;
   }
 
-  Future<void> _insertEmojiFromPicker() async {
+  Future<void> _pickLeadingEmoji() async {
     final e = await pickEmoji(context);
     if (e == null || e.isEmpty) return;
     setState(() => leadingEmoji = e);
-
-    // Insert at caret
-    final t = sourceCtrl;
-    final sel = t.selection;
-    final start = sel.start < 0 ? t.text.length : sel.start;
-    final end = sel.end < 0 ? t.text.length : sel.end;
-    t.value = TextEditingValue(
-      text: t.text.replaceRange(start, end, e),
-      selection: TextSelection.collapsed(offset: start + e.length),
-    );
   }
 
   void _submit() {
@@ -171,7 +161,7 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
                     // Tightly-sized, click-only emoji button
                     prefixIcon: _EmojiPrefixButton(
                       emoji: leadingEmoji,
-                      onTap: _insertEmojiFromPicker,
+                      onTap: _pickLeadingEmoji,
                     ),
                     prefixIconConstraints: const BoxConstraints(
                       minWidth: 44,

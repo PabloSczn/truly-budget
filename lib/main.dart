@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'services/app_ads_controller.dart';
@@ -27,10 +28,24 @@ class TrulyBudgetApp extends StatelessWidget {
   });
 
   ThemeData _buildTheme(Brightness brightness) {
+    final overlayStyle = _systemOverlayStyleFor(brightness);
+
     return ThemeData(
       useMaterial3: true,
       colorSchemeSeed: Colors.teal,
       brightness: brightness,
+      appBarTheme: AppBarTheme(systemOverlayStyle: overlayStyle),
+    );
+  }
+
+  SystemUiOverlayStyle _systemOverlayStyleFor(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+
+    return SystemUiOverlayStyle(
+      statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+      statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      systemNavigationBarIconBrightness:
+          isDark ? Brightness.light : Brightness.dark,
     );
   }
 
@@ -48,6 +63,12 @@ class TrulyBudgetApp extends StatelessWidget {
           theme: _buildTheme(Brightness.light),
           darkTheme: _buildTheme(Brightness.dark),
           themeMode: s.themeMode,
+          builder: (context, child) {
+            return AnnotatedRegion<SystemUiOverlayStyle>(
+              value: _systemOverlayStyleFor(Theme.of(context).brightness),
+              child: child ?? const SizedBox.shrink(),
+            );
+          },
           home: () {
             if (!s.initialized) {
               return const Scaffold(
