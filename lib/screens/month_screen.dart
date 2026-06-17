@@ -491,6 +491,14 @@ class _MonthScreenState extends State<MonthScreen> {
         _areOverBudgetCategoriesExpanded(ymKey);
     final hasRecordedExpenses =
         b.categories.any((category) => category.expenses.isNotEmpty);
+    final allocatedCategories = b.categories
+        .where(
+            (category) => !store.isUncategorizedCategory(category, budget: b))
+        .toList();
+    final allocatedAmount = allocatedCategories.fold<double>(
+      0.0,
+      (sum, category) => sum + category.allocated,
+    );
 
     return PopScope(
       canPop: false,
@@ -758,6 +766,18 @@ class _MonthScreenState extends State<MonthScreen> {
                   },
                   onLongPress: canEdit ? () => _showCategoryActions(c) : null,
                 )),
+            if (allocatedCategories.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Text(
+                  'Funds Allocated: ${Format.money(allocatedAmount, symbol: store.currency.symbol)} / ${Format.money(b.totalIncome, symbol: store.currency.symbol)}',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ),
             const SizedBox(height: 80),
           ],
         ),
