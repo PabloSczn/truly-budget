@@ -416,7 +416,7 @@ class _MonthScreenState extends State<MonthScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Create $nextMonthLabel first to carry debt forward.',
+              'Create $nextMonthLabel first to carry debt forward',
             ),
           ),
         );
@@ -432,7 +432,7 @@ class _MonthScreenState extends State<MonthScreen> {
         break;
       case CarryForwardDebtResult.debtAlreadyCarried:
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Debt was already carried forward.')),
+          const SnackBar(content: Text('Debt was already carried forward')),
         );
         break;
       case CarryForwardDebtResult.monthHasNoDebt:
@@ -545,8 +545,47 @@ class _MonthScreenState extends State<MonthScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Balance',
-                        style: Theme.of(context).textTheme.titleMedium),
+                    SizedBox(
+                      width: double.infinity,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Text(
+                            'Balance',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          Positioned(
+                            top: 0,
+                            right: 0,
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 180),
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.topRight,
+                                child: Text(
+                                  Format.money(
+                                    remainingAfterExpenses,
+                                    symbol: store.currency.symbol,
+                                  ),
+                                  textAlign: TextAlign.right,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleSmall
+                                      ?.copyWith(
+                                        color: remainingAfterExpenses >= 0
+                                            ? Colors.green.shade700
+                                            : Theme.of(context)
+                                                .colorScheme
+                                                .error,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
@@ -625,7 +664,7 @@ class _MonthScreenState extends State<MonthScreen> {
                           )
                         else
                           Text(
-                            'Create $nextMonthLabel to carry this debt forward.',
+                            'Create $nextMonthLabel to carry this debt forward',
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                       ],

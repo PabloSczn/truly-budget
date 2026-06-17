@@ -58,11 +58,11 @@ class LandingScreen extends StatelessWidget {
     if (!context.mounted) return;
 
     if (carryResult != CarryForwardDebtResult.success) {
-      var message = 'Debt could not be carried forward.';
+      var message = 'Debt could not be carried forward';
       if (carryResult == CarryForwardDebtResult.nextMonthCompleted) {
         message = '$nextMonthLabel is completed. Reopen it first.';
       } else if (carryResult == CarryForwardDebtResult.debtAlreadyCarried) {
-        message = 'Debt was already carried forward.';
+        message = 'Debt was already carried forward';
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
@@ -94,7 +94,7 @@ class LandingScreen extends StatelessWidget {
           title: const Text('Complete this month budget?'),
           content: Text(
             debtAlreadyCarried
-                ? 'Debt was already carried forward. This month will become read-only.'
+                ? 'Debt was already carried forward. This month will become read-only'
                 : 'This month will become read-only.',
           ),
           actions: [
